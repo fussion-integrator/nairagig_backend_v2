@@ -1,6 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
+import { Strategy as AppleStrategy } from 'passport-apple';
 import { config } from '@/config/config';
 import { prisma } from '@/config/database';
 import { logger } from '@/utils/logger';
@@ -107,6 +108,59 @@ passport.use('linkedin', new OAuth2Strategy({
     return done(null, user);
   } catch (error) {
     logger.error('LinkedIn OAuth error:', error);
+    return done(error, false);
+  }
+}));
+
+// Apple OAuth Strategy
+passport.use(new AppleStrategy({
+  clientID: config.appleClientId!,
+  teamID: config.appleTeamId!,
+  keyID: config.appleKeyId!,
+  privateKeyLocation: config.applePrivateKeyPath!,
+  callbackURL: 'http://localhost:3000/api/v1/auth/apple/callback'
+}, async (accessToken: string, refreshToken: string, idToken: any, profile: any, done: any) => {
+  try {
+    const appleId = profile.id || idToken.sub;
+    const email = profile.email || idToken.email;
+    const firstName = profile.name?.firstName || '';
+    const lastName = profile.name?.lastName || '';
+    
+    let user = await prisma.user.findUnique({
+      where: { appleId: appleId }
+    });
+
+    if (!user) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: email || '' }
+      });
+
+      if (existingUser) {
+        user = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            appleId: appleId,
+            authProvider: 'APPLE',
+            emailVerifiedAt: new Date()
+          }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            appleId: appleId,
+            email: email || '',
+            firstName: firstName,
+            lastName: lastName,
+            authProvider: 'APPLE',
+            emailVerifiedAt: new Date()
+          }
+        });
+      }
+    }
+
+    return done(null, user);
+  } catch (error) {
+    logger.error('Apple OAuth error:', error);
     return done(error, false);
   }
 }));
