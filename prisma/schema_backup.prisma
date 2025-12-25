@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  username          String?   @unique
+  firstName         String
+  lastName          String
+  phoneNumber       String?
+  profileImage      String?
+  bio               String?
+  location          String?
+  website           String?
+  skills            String[]
+  hourlyRate        Decimal?
+  isEmailVerified   Boolean   @default(false)
+  isPhoneVerified   Boolean   @default(false)
+  isKycVerified     Boolean   @default(false)
+  role              UserRole  @default(FREELANCER)
+  status            UserStatus @default(ACTIVE)
+  lastLoginAt       DateTime?
+  
+  // OAuth fields
+  googleId          String?   @unique
+  appleId           String?   @unique
+  linkedinId        String?   @unique
+  authProvider      AuthProvider @default(LOCAL)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  jobs              Job[]
+  applications      JobApplication[]
+  reviews           Review[]
+  reviewsReceived   Review[] @relation("ReviewReceiver")
+  messages          Message[]
+  notifications     Notification[]
+  transactions      Transaction[]
+  challenges        Challenge[]
+  challengeSubmissions ChallengeSubmission[]
+  projects          Project[]
+  projectMembers    ProjectMember[]
+
+  @@map("users")
+}
+
+model Job {
+  id              String        @id @default(uuid())
+  title           String
+  description     String
+  budget          Decimal
+  budgetType      BudgetType    @default(FIXED)
+  duration        Int?
+  durationType    DurationType  @default(DAYS)
+  skills          String[]
+  category        String
+  experienceLevel ExperienceLevel @default(INTERMEDIATE)
+  status          JobStatus     @default(OPEN)
+  isUrgent        Boolean       @default(false)
+  attachments     String[]
+  clientId        String
+  awardedTo       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  client          User          @relation(fields: [clientId], references: [id])
+  applications    JobApplication[]
+  reviews         Review[]
+
+  @@map("jobs")
+}
+
+model JobApplication {
+  id              String              @id @default(uuid())
+  jobId           String
+  freelancerId    String
+  coverLetter     String
+  proposedBudget  Decimal?
+  proposedDuration Int?
+  status          ApplicationStatus   @default(PENDING)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  job             Job                 @relation(fields: [jobId], references: [id])
+  freelancer      User                @relation(fields: [freelancerId], references: [id])
+
+  @@unique([jobId, freelancerId])
+  @@map("job_applications")
+}
+
+model Review {
+  id          String    @id @default(uuid())
+  jobId       String?
+  reviewerId  String
+  revieweeId  String
+  rating      Int       @db.SmallInt
+  comment     String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  job         Job?      @relation(fields: [jobId], references: [id])
+  reviewer    User      @relation(fields: [reviewerId], references: [id])
+  reviewee    User      @relation("ReviewReceiver", fields: [revieweeId], references: [id])
+
+  @@map("reviews")
+}
+
+model Challenge {
+  id              String              @id @default(uuid())
+  title           String
+  description     String
+  requirements    String
+  prize           Decimal
+  startDate       DateTime
+  endDate         DateTime
+  maxParticipants Int?
+  status          ChallengeStatus     @default(UPCOMING)
+  createdBy       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  creator         User                @relation(fields: [createdBy], references: [id])
+  submissions     ChallengeSubmission[]
+
+  @@map("challenges")
+}
+
+model ChallengeSubmission {
+  id            String              @id @default(uuid())
+  challengeId   String
+  participantId String
+  submissionUrl String
+  description   String?
+  status        SubmissionStatus    @default(SUBMITTED)
+  score         Int?
+  rank          Int?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  challenge     Challenge           @relation(fields: [challengeId], references: [id])
+  participant   User                @relation(fields: [participantId], references: [id])
+
+  @@unique([challengeId, participantId])
+  @@map("challenge_submissions")
+}
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  status      ProjectStatus   @default(PLANNING)
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Decimal?
+  ownerId     String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  owner       User            @relation(fields: [ownerId], references: [id])
+  members     ProjectMember[]
+  messages    Message[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+
+  // Relations
+  project   Project     @relation(fields: [projectId], references: [id])
+  user      User        @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Message {
+  id          String      @id @default(uuid())
+  content     String
+  senderId    String
+  receiverId  String?
+  projectId   String?
+  messageType MessageType @default(TEXT)
+  attachments String[]
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  sender      User        @relation(fields: [senderId], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  userId          String
+  amount          Decimal
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  description     String?
+  reference       String?           @unique
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id])
+
+  @@map("transactions")
+}
+
+// Enums
+enum UserRole {
+  FREELANCER
+  CLIENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum BudgetType {
+  FIXED
+  HOURLY
+}
+
+enum DurationType {
+  HOURS
+  DAYS
+  WEEKS
+  MONTHS
+}
+
+enum ExperienceLevel {
+  ENTRY
+  INTERMEDIATE
+  EXPERT
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ChallengeStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum NotificationType {
+  JOB_APPLICATION
+  JOB_AWARDED
+  MESSAGE
+  PAYMENT
+  SYSTEM
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  REFUND
+  FEE
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  APPLE
+  LINKEDIN
+}

@@ -1,0 +1,973 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                    @id @default(uuid())
+  email                 String                    @unique
+  username              String?                   @unique
+  firstName             String
+  lastName              String
+  phoneNumber           String?                   @unique
+  bio                   String?
+  hourlyRate            Decimal?
+  role                  UserRole                  @default(FREELANCER)
+  status                UserStatus                @default(ACTIVE)
+  lastLoginAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  appleId               String?                   @unique
+  authProvider          AuthProvider              @default(LOCAL)
+  googleId              String?                   @unique
+  linkedinId            String?                   @unique
+  address               String?
+  availabilityStatus    String?                   @default("available")
+  city                  String?
+  country               String?
+  coverImageUrl         String?
+  dateOfBirth           DateTime?
+  deletedAt             DateTime?
+  displayName           String?
+  emailVerifiedAt       DateTime?
+  experiencePoints      Int                       @default(0)
+  gender                String?
+  kycVerifiedAt         DateTime?
+  lastActiveAt          DateTime?
+  level                 Int                       @default(1)
+  loginCount            Int                       @default(0)
+  phoneVerifiedAt       DateTime?
+  portfolioUrl          String?
+  profileImageUrl       String?
+  reputationScore       Decimal?                  @default(0.00)
+  state                 String?
+  subscriptionExpiresAt DateTime?
+  subscriptionTier      String?                   @default("free")
+  timezone              String?
+  title                 String?
+  twoFactorEnabled      Boolean                   @default(false)
+  twoFactorSecret       String?
+  websiteUrl            String?
+  yearsOfExperience     Int?
+  challengeParticipants ChallengeParticipant[]
+  challenges            Challenge[]               @relation("CreatedChallenges")
+  sponsoredChallenges   Challenge[]               @relation("SponsoredChallenges")
+  conversations         ConversationParticipant[]
+  files                 File[]                    @relation("UploadedFiles")
+  applications          JobApplication[]
+  awardedJobs           Job[]                     @relation("AwardedJobs")
+  jobs                  Job[]                     @relation("ClientJobs")
+  jobQuestions          JobQuestion[]             @relation("FreelancerQuestions")
+  messageReads          MessageRead[]             @relation("MessageReads")
+  messages              Message[]
+  notifications         Notification[]
+  paymentMethods        PaymentMethod[]
+  portfolios            Portfolio[]
+  projectMembers        ProjectMember[]
+  milestones            ProjectMilestone[]
+  clientProjects        Project[]                 @relation("ClientProjects")
+  freelancerProjects    Project[]                 @relation("FreelancerProjects")
+  reviewsReceived       Review[]                  @relation("ReviewsOfUser")
+  reviews               Review[]                  @relation("ReviewsByUser")
+  transactions          Transaction[]
+  achievements          UserAchievement[]
+  analytics             UserAnalytics[]
+  skills                UserSkill[]               @relation("UserSkills")
+  skillVerifications    UserSkill[]               @relation("SkillVerifications")
+  socialProfiles        UserSocialProfile[]
+  wallets               Wallet[]
+
+  @@map("users")
+}
+
+model UserSkill {
+  id               String   @id @default(uuid())
+  userId           String
+  skillName        String
+  proficiencyLevel Int
+  yearsExperience  Decimal?
+  isVerified       Boolean  @default(false)
+  verifiedBy       String?
+  createdAt        DateTime @default(now())
+  user             User     @relation("UserSkills", fields: [userId], references: [id], onDelete: Cascade)
+  verifier         User?    @relation("SkillVerifications", fields: [verifiedBy], references: [id])
+
+  @@map("user_skills")
+}
+
+model UserSocialProfile {
+  id               String   @id @default(uuid())
+  userId           String
+  platform         String
+  profileUrl       String
+  username         String?
+  isVerified       Boolean  @default(false)
+  verificationData Json?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_social_profiles")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  icon        String?
+  isActive    Boolean    @default(true)
+  parentId    String?
+  createdAt   DateTime   @default(now())
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  jobs        Job[]
+
+  @@map("categories")
+}
+
+model Job {
+  id                  String           @id @default(uuid())
+  title               String
+  description         String
+  budgetType          BudgetType       @default(FIXED)
+  durationType        DurationType     @default(DAYS)
+  experienceLevel     ExperienceLevel  @default(INTERMEDIATE)
+  status              JobStatus        @default(DRAFT)
+  isUrgent            Boolean          @default(false)
+  allowQuestions      Boolean          @default(true)
+  requireCoverLetter  Boolean          @default(true)
+  clientId            String
+  awardedTo           String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  applicationCount    Int              @default(0)
+  applicationDeadline DateTime?
+  autoAward           Boolean          @default(false)
+  awardedAt           DateTime?
+  budgetMax           Decimal?
+  budgetMin           Decimal?
+  categoryId          String?
+  completedAt         DateTime?
+  currency            String           @default("NGN")
+  deadline            DateTime?
+  deletedAt           DateTime?
+  deliverables        String?
+  estimatedDuration   Int?
+  images              String[]
+  isFeatured          Boolean          @default(false)
+  maxApplications     Int?
+  preferredSkills     String[]
+  requiredSkills      String[]
+  requirements        String?
+  startedAt           DateTime?
+  viewCount           Int              @default(0)
+  visibility          JobVisibility    @default(PUBLIC)
+  attachments         Json             @default("[]")
+  applications        JobApplication[]
+  questions           JobQuestion[]
+  awardedFreelancer   User?            @relation("AwardedJobs", fields: [awardedTo], references: [id])
+  category            Category?        @relation(fields: [categoryId], references: [id])
+  client              User             @relation("ClientJobs", fields: [clientId], references: [id])
+  project             Project?
+
+  @@map("jobs")
+}
+
+model JobApplication {
+  id                 String            @id @default(uuid())
+  jobId              String
+  freelancerId       String
+  coverLetter        String
+  proposedBudget     Decimal?
+  status             ApplicationStatus @default(PENDING)
+  attachments        Json              @default("[]")
+  clientFeedback     String?
+  freelancerResponse String?
+  portfolioItems     Json              @default("[]")
+  proposedTimeline   Int?
+  respondedAt        DateTime?
+  reviewedAt         DateTime?
+  submittedAt        DateTime          @default(now())
+  timelineUnit       String?
+  freelancer         User              @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  job                Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, freelancerId])
+  @@map("job_applications")
+}
+
+model JobQuestion {
+  id           String   @id @default(uuid())
+  jobId        String
+  freelancerId String
+  question     String
+  answer       String?
+  isAnswered   Boolean  @default(false)
+  isPublic     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  answeredAt   DateTime?
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  freelancer   User     @relation("FreelancerQuestions", fields: [freelancerId], references: [id], onDelete: Cascade)
+
+  @@map("job_questions")
+}
+
+model Project {
+  id                 String             @id @default(uuid())
+  description        String?
+  status             ProjectStatus      @default(PLANNING)
+  startDate          DateTime?
+  endDate            DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  agreedBudget       Decimal
+  clientId           String
+  completedAt        DateTime?
+  contractTerms      String?
+  currency           String             @default("NGN")
+  deliverables       Json               @default("[]")
+  estimatedHours     Int?
+  finalDeliverables  Json               @default("[]")
+  freelancerId       String
+  jobId              String?            @unique
+  paymentSchedule    PaymentSchedule    @default(MILESTONE)
+  progressPercentage Int                @default(0)
+  requirements       String?
+  revisionLimit      Int                @default(3)
+  revisionsUsed      Int                @default(0)
+  title              String
+  conversations      Conversation[]
+  members            ProjectMember[]
+  milestones         ProjectMilestone[]
+  client             User               @relation("ClientProjects", fields: [clientId], references: [id])
+  freelancer         User               @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  job                Job?               @relation(fields: [jobId], references: [id])
+  reviews            Review[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model ProjectMilestone {
+  id               String          @id @default(uuid())
+  projectId        String
+  createdBy        String
+  title            String
+  description      String?
+  deliverables     String?
+  amount           Decimal
+  dueDate          DateTime?
+  orderIndex       Int
+  status           MilestoneStatus @default(PENDING)
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  clientFeedback   String?
+  freelancerNotes  String?
+  deliverableFiles Json            @default("[]")
+  createdAt        DateTime        @default(now())
+  creator          User            @relation(fields: [createdBy], references: [id])
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_milestones")
+}
+
+model Wallet {
+  id                     String        @id @default(uuid())
+  userId                 String
+  availableBalance       Decimal       @default(0.00)
+  pendingBalance         Decimal       @default(0.00)
+  escrowBalance          Decimal       @default(0.00)
+  totalEarned            Decimal       @default(0.00)
+  totalWithdrawn         Decimal       @default(0.00)
+  currency               String        @default("NGN")
+  status                 WalletStatus  @default(ACTIVE)
+  isVerified             Boolean       @default(false)
+  dailyWithdrawalLimit   Decimal       @default(100000.00)
+  monthlyWithdrawalLimit Decimal       @default(1000000.00)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  transactions           Transaction[]
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, currency])
+  @@map("wallets")
+}
+
+model Transaction {
+  id                String            @id @default(uuid())
+  userId            String
+  amount            Decimal
+  type              TransactionType
+  status            TransactionStatus @default(PENDING)
+  description       String?
+  metadata          Json              @default("{}")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  currency          String            @default("NGN")
+  failedAt          DateTime?
+  failureReason     String?
+  gatewayFee        Decimal           @default(0.00)
+  gatewayProvider   String?
+  gatewayReference  String?
+  gatewayResponse   Json?
+  netAmount         Decimal?
+  platformFee       Decimal           @default(0.00)
+  processedAt       DateTime?
+  referenceId       String?           @unique
+  relatedEntityId   String?
+  relatedEntityType String?
+  walletId          String?
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet            Wallet?           @relation(fields: [walletId], references: [id])
+
+  @@map("transactions")
+}
+
+model PaymentMethod {
+  id                    String              @id @default(uuid())
+  userId                String
+  type                  PaymentMethodType
+  provider              String?
+  bankName              String?
+  bankCode              String?
+  accountNumber         String?
+  accountName           String?
+  cardLastFour          String?
+  cardBrand             String?
+  cardToken             String?
+  phoneNumber           String?
+  networkProvider       String?
+  isVerified            Boolean             @default(false)
+  isDefault             Boolean             @default(false)
+  status                PaymentMethodStatus @default(ACTIVE)
+  verificationReference String?
+  verifiedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payment_methods")
+}
+
+model Conversation {
+  id                 String                    @id @default(uuid())
+  type               ConversationType          @default(DIRECT)
+  projectId          String?
+  challengeId        String?
+  title              String?
+  description        String?
+  status             ConversationStatus        @default(ACTIVE)
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  participants       ConversationParticipant[]
+  challenge          Challenge?                @relation(fields: [challengeId], references: [id])
+  project            Project?                  @relation(fields: [projectId], references: [id])
+  messages           Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime     @default(now())
+  lastReadAt     DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  content        String?
+  senderId       String
+  messageType    MessageType   @default(TEXT)
+  createdAt      DateTime      @default(now())
+  conversationId String
+  deletedAt      DateTime?
+  editedAt       DateTime?
+  isDeleted      Boolean       @default(false)
+  isEdited       Boolean       @default(false)
+  replyToId      String?
+  threadCount    Int           @default(0)
+  attachments    Json          @default("[]")
+  reads          MessageRead[]
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyTo        Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        Message[]     @relation("MessageReplies")
+  sender         User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation("MessageReads", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+model File {
+  id              String         @id @default(uuid())
+  uploadedBy      String?
+  originalName    String
+  fileName        String
+  filePath        String
+  fileSize        BigInt
+  mimeType        String
+  fileExtension   String?
+  fileCategory    FileCategory?
+  storageProvider String         @default("local")
+  storagePath     String?
+  cdnUrl          String?
+  width           Int?
+  height          Int?
+  duration        Int?
+  visibility      FileVisibility @default(PRIVATE)
+  accessToken     String?
+  downloadCount   Int            @default(0)
+  status          FileStatus     @default(ACTIVE)
+  isScanned       Boolean        @default(false)
+  scanResult      String?
+  scannedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  uploader        User?          @relation("UploadedFiles", fields: [uploadedBy], references: [id])
+
+  @@map("files")
+}
+
+model Challenge {
+  id                 String                 @id @default(uuid())
+  title              String
+  description        String
+  requirements       String
+  maxParticipants    Int?
+  status             ChallengeStatus        @default(DRAFT)
+  createdBy          String
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  category           String
+  currency           String                 @default("NGN")
+  difficultyLevel    DifficultyLevel        @default(INTERMEDIATE)
+  entryFee           Decimal                @default(0)
+  isFeatured         Boolean                @default(false)
+  isTeamChallenge    Boolean                @default(false)
+  judgingCriteria    String?
+  judgingEnd         DateTime
+  maxTeamSize        Int                    @default(1)
+  minParticipants    Int                    @default(1)
+  participantCount   Int                    @default(0)
+  referenceMaterials Json                   @default("[]")
+  registrationEnd    DateTime
+  registrationStart  DateTime
+  sponsorId          String?
+  starterFiles       Json                   @default("[]")
+  submissionCount    Int                    @default(0)
+  submissionEnd      DateTime
+  submissionFormat   String?
+  submissionStart    DateTime
+  tags               String[]
+  totalPrizePool     Decimal
+  viewCount          Int                    @default(0)
+  visibility         ChallengeVisibility    @default(PUBLIC)
+  winnerDistribution Json?
+  participants       ChallengeParticipant[]
+  submissions        ChallengeSubmission[]
+  creator            User                   @relation("CreatedChallenges", fields: [createdBy], references: [id])
+  sponsor            User?                  @relation("SponsoredChallenges", fields: [sponsorId], references: [id])
+  conversations      Conversation[]
+
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  id               String                @id @default(uuid())
+  challengeId      String
+  userId           String
+  teamName         String?
+  registeredAt     DateTime              @default(now())
+  entryFeePaid     Boolean               @default(false)
+  paymentReference String?
+  status           ParticipantStatus     @default(REGISTERED)
+  challenge        Challenge             @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions      ChallengeSubmission[]
+
+  @@unique([challengeId, userId])
+  @@map("challenge_participants")
+}
+
+model ChallengeSubmission {
+  id             String               @id @default(uuid())
+  challengeId    String
+  participantId  String
+  submissionUrl  String?
+  description    String?
+  status         SubmissionStatus     @default(SUBMITTED)
+  demoUrl        String?
+  files          Json                 @default("[]")
+  finalRank      Int?
+  images         String[]
+  isWinner       Boolean              @default(false)
+  judgeScores    Json                 @default("[]")
+  judgedAt       DateTime?
+  prizeAmount    Decimal?
+  repositoryUrl  String?
+  submittedAt    DateTime             @default(now())
+  title          String?
+  totalScore     Decimal              @default(0)
+  videos         String[]
+  winnerPosition Int?
+  challenge      Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participant    ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, participantId])
+  @@map("challenge_submissions")
+}
+
+model Notification {
+  id                String                @id @default(uuid())
+  userId            String
+  title             String
+  message           String
+  type              NotificationType
+  isRead            Boolean               @default(false)
+  data              Json                  @default("{}")
+  createdAt         DateTime              @default(now())
+  actionText        String?
+  actionUrl         String?
+  channels          NotificationChannel[] @default([IN_APP])
+  emailSent         Boolean               @default(false)
+  emailSentAt       DateTime?
+  expiresAt         DateTime?
+  priority          NotificationPriority  @default(NORMAL)
+  pushSent          Boolean               @default(false)
+  pushSentAt        DateTime?
+  readAt            DateTime?
+  relatedEntityId   String?
+  relatedEntityType String?
+  smsSent           Boolean               @default(false)
+  smsSentAt         DateTime?
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Review {
+  id                  String       @id @default(uuid())
+  reviewerId          String
+  revieweeId          String
+  comment             String?
+  createdAt           DateTime     @default(now())
+  communicationRating Int?
+  isFeatured          Boolean      @default(false)
+  overallRating       Int
+  projectId           String?
+  qualityRating       Int?
+  respondedAt         DateTime?
+  response            String?
+  reviewType          ReviewType
+  status              ReviewStatus @default(ACTIVE)
+  timelinessRating    Int?
+  title               String?
+  updatedAt           DateTime     @updatedAt
+  project             Project?     @relation(fields: [projectId], references: [id])
+  reviewee            User         @relation("ReviewsOfUser", fields: [revieweeId], references: [id])
+  reviewer            User         @relation("ReviewsByUser", fields: [reviewerId], references: [id])
+
+  @@unique([projectId, reviewerId, revieweeId])
+  @@map("reviews")
+}
+
+model Portfolio {
+  id               String              @id @default(uuid())
+  userId           String
+  title            String
+  description      String?
+  category         String?
+  tags             String[]
+  clientName       String?
+  projectDuration  String?
+  technologiesUsed String[]
+  featuredImageId  String?
+  images           String[]
+  videos           String[]
+  liveUrl          String?
+  repositoryUrl    String?
+  caseStudyUrl     String?
+  isFeatured       Boolean             @default(false)
+  visibility       PortfolioVisibility @default(PUBLIC)
+  status           PortfolioStatus     @default(ACTIVE)
+  viewCount        Int                 @default(0)
+  likeCount        Int                 @default(0)
+  displayOrder     Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("portfolios")
+}
+
+model Achievement {
+  id               String              @id @default(uuid())
+  name             String              @unique
+  title            String
+  description      String
+  category         AchievementCategory
+  criteria         Json
+  experiencePoints Int                 @default(0)
+  badgeIcon        String?
+  badgeColor       String?
+  rarity           AchievementRarity   @default(COMMON)
+  displayOrder     Int                 @default(0)
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id               String      @id @default(uuid())
+  userId           String
+  achievementId    String
+  progress         Int         @default(0)
+  maxProgress      Int         @default(1)
+  isCompleted      Boolean     @default(false)
+  completedAt      DateTime?
+  experienceEarned Int         @default(0)
+  metadata         Json        @default("{}")
+  createdAt        DateTime    @default(now())
+  achievement      Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model UserAnalytics {
+  id              String   @id @default(uuid())
+  userId          String
+  date            DateTime @db.Date
+  loginCount      Int      @default(0)
+  sessionDuration Int      @default(0)
+  pageViews       Int      @default(0)
+  jobsApplied     Int      @default(0)
+  jobsWon         Int      @default(0)
+  jobsCompleted   Int      @default(0)
+  earnings        Decimal  @default(0.00)
+  withdrawals     Decimal  @default(0.00)
+  messagesSent    Int      @default(0)
+  profileViews    Int      @default(0)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_analytics")
+}
+
+enum UserRole {
+  FREELANCER
+  CLIENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  APPLE
+  LINKEDIN
+}
+
+enum BudgetType {
+  FIXED
+  HOURLY
+}
+
+enum DurationType {
+  HOURS
+  DAYS
+  WEEKS
+  MONTHS
+}
+
+enum ExperienceLevel {
+  ENTRY
+  INTERMEDIATE
+  EXPERT
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum JobVisibility {
+  PUBLIC
+  PRIVATE
+  FEATURED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum PaymentSchedule {
+  UPFRONT
+  MILESTONE
+  COMPLETION
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum ChallengeStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DRAFT
+  REGISTRATION_OPEN
+  JUDGING
+}
+
+enum ChallengeVisibility {
+  PUBLIC
+  PRIVATE
+  INVITE_ONLY
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ParticipantStatus {
+  REGISTERED
+  ACTIVE
+  SUBMITTED
+  DISQUALIFIED
+  WINNER
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  REJECTED
+  DRAFT
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  REFUND
+  FEE
+  BONUS
+  PENALTY
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PROCESSING
+  REVERSED
+}
+
+enum WalletStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum PaymentMethodType {
+  BANK_ACCOUNT
+  CARD
+  MOBILE_MONEY
+  CRYPTO
+}
+
+enum PaymentMethodStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  BLOCKED
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  PROJECT
+  SUPPORT
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+  BLOCKED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+  AUDIO
+  VIDEO
+}
+
+enum NotificationType {
+  JOB_APPLICATION
+  JOB_AWARDED
+  MESSAGE
+  PAYMENT
+  SYSTEM
+  PROJECT_UPDATE
+  CHALLENGE
+  MARKETING
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum FileCategory {
+  PROFILE_IMAGE
+  PORTFOLIO
+  PROJECT_FILE
+  MESSAGE_ATTACHMENT
+  DOCUMENT
+  OTHER
+}
+
+enum FileVisibility {
+  PUBLIC
+  PRIVATE
+  RESTRICTED
+}
+
+enum FileStatus {
+  ACTIVE
+  DELETED
+  QUARANTINED
+}
+
+enum PortfolioVisibility {
+  PUBLIC
+  PRIVATE
+  CLIENTS_ONLY
+}
+
+enum PortfolioStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum ReviewType {
+  CLIENT_TO_FREELANCER
+  FREELANCER_TO_CLIENT
+}
+
+enum ReviewStatus {
+  ACTIVE
+  HIDDEN
+  DISPUTED
+  REMOVED
+}
+
+enum AchievementCategory {
+  PROFILE
+  JOBS
+  EARNINGS
+  SOCIAL
+  CHALLENGES
+  MILESTONES
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
