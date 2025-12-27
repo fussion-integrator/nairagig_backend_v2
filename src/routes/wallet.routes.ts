@@ -15,5 +15,7 @@ router.get('/transactions/:id', walletController.getTransaction.bind(walletContr
 router.put('/transactions/:id', walletController.updateTransaction.bind(walletController));
 router.get('/payment-methods', walletController.getPaymentMethods.bind(walletController));
 router.post('/payment-methods', walletController.addPaymentMethod.bind(walletController));
+router.post('/deposit', walletController.initializeDeposit.bind(walletController));
+router.post('/withdraw', walletController.initializeWithdrawal.bind(walletController));
 
 export { router as walletRoutes };

@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
+import axios from 'axios';
+
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 
 export class WalletController {
   async getWallet(req: Request, res: Response, next: NextFunction) {
@@ -213,7 +217,23 @@ export class WalletController {
         await prisma.wallet.update({
           where: { id: walletId },
           data: {
-            balance: {
+            availableBalance: {
+              increment: transaction.amount
+            },
+            totalEarned: {
+              increment: transaction.amount
+            }
+          }
+        });
+      } else if (req.body.status === 'COMPLETED' && transaction.type === 'DEBIT') {
+        const walletId = transaction.walletId || '';
+        await prisma.wallet.update({
+          where: { id: walletId },
+          data: {
+            availableBalance: {
+              decrement: transaction.amount
+            },
+            totalWithdrawn: {
               increment: transaction.amount
             }
           }
@@ -302,6 +322,199 @@ export class WalletController {
         data: paymentMethod
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  async initializeDeposit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const { amount, currency = 'NGN' } = req.body;
+
+      if (!amount || amount <= 0) {
+        throw ApiError.badRequest('Invalid amount');
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true }
+      });
+
+      if (!user) {
+        throw ApiError.notFound('User not found');
+      }
+
+      // Create transaction record
+      const transaction = await prisma.transaction.create({
+        data: {
+          userId,
+          type: 'DEPOSIT',
+          amount,
+          currency,
+          description: 'Wallet funding',
+          status: 'PENDING'
+        }
+      });
+
+      // Initialize Paystack payment
+      const paystackResponse = await axios.post(
+        `${PAYSTACK_BASE_URL}/transaction/initialize`,
+        {
+          email: user.email,
+          amount: amount * 100, // Paystack expects amount in kobo
+          currency,
+          reference: transaction.id,
+          callback_url: `${process.env.FRONTEND_URL}/wallet?payment=success`,
+          metadata: {
+            userId,
+            transactionId: transaction.id,
+            type: 'wallet_funding'
+          }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Update transaction with Paystack reference
+      await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          gatewayReference: paystackResponse.data.data.reference,
+          gatewayProvider: 'paystack'
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          transactionId: transaction.id,
+          paymentUrl: paystackResponse.data.data.authorization_url,
+          reference: paystackResponse.data.data.reference
+        }
+      });
+    } catch (error) {
+      logger.error('Deposit initialization failed:', error);
+      next(error);
+    }
+  }
+
+  async initializeWithdrawal(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const { amount, paymentMethodId, currency = 'NGN' } = req.body;
+
+      if (!amount || amount <= 0) {
+        throw ApiError.badRequest('Invalid amount');
+      }
+
+      // Check wallet balance
+      const wallet = await prisma.wallet.findUnique({
+        where: {
+          userId_currency: {
+            userId,
+            currency
+          }
+        }
+      });
+
+      if (!wallet || wallet.availableBalance < amount) {
+        throw ApiError.badRequest('Insufficient balance');
+      }
+
+      // Get payment method
+      const paymentMethod = await prisma.paymentMethod.findFirst({
+        where: {
+          id: paymentMethodId,
+          userId,
+          status: 'ACTIVE'
+        }
+      });
+
+      if (!paymentMethod) {
+        throw ApiError.notFound('Payment method not found');
+      }
+
+      // Create withdrawal transaction
+      const transaction = await prisma.transaction.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          type: 'WITHDRAWAL',
+          amount,
+          currency,
+          description: `Withdrawal to ${paymentMethod.bankName} - ${paymentMethod.accountNumber}`,
+          status: 'PROCESSING',
+          metadata: {
+            paymentMethodId,
+            bankName: paymentMethod.bankName,
+            accountNumber: paymentMethod.accountNumber,
+            accountName: paymentMethod.accountName
+          }
+        }
+      });
+
+      // Update wallet balance (move to pending)
+      await prisma.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          availableBalance: {
+            decrement: amount
+          },
+          pendingBalance: {
+            increment: amount
+          }
+        }
+      });
+
+      // In production, integrate with Paystack Transfer API
+      // For now, we'll mark as completed after a delay
+      setTimeout(async () => {
+        try {
+          await prisma.transaction.update({
+            where: { id: transaction.id },
+            data: {
+              status: 'COMPLETED',
+              processedAt: new Date()
+            }
+          });
+
+          await prisma.wallet.update({
+            where: { id: wallet.id },
+            data: {
+              pendingBalance: {
+                decrement: amount
+              },
+              totalWithdrawn: {
+                increment: amount
+              }
+            }
+          });
+        } catch (error) {
+          logger.error('Withdrawal completion failed:', error);
+        }
+      }, 5000); // 5 second delay for demo
+
+      res.json({
+        success: true,
+        data: {
+          transactionId: transaction.id,
+          message: 'Withdrawal initiated successfully'
+        }
+      });
+    } catch (error) {
+      logger.error('Withdrawal initialization failed:', error);
       next(error);
     }
   }

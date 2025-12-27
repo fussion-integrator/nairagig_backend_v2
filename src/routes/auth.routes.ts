@@ -15,15 +15,15 @@ router.post('/refresh', authController.refreshToken.bind(authController));
 
 // OAuth Routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), authController.oauthCallback);
+router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), authController.oauthCallback.bind(authController));
 
 router.get('/linkedin', passport.authenticate('linkedin', { scope: 'openid profile email' }));
-router.get('/linkedin/callback', passport.authenticate('linkedin', { failureRedirect: '/login' }), authController.oauthCallback);
+router.get('/linkedin/callback', passport.authenticate('linkedin', { failureRedirect: '/login' }), authController.oauthCallback.bind(authController));
 
 router.get('/apple', passport.authenticate('apple'));
-router.get('/apple/callback', passport.authenticate('apple', { failureRedirect: '/login' }), authController.oauthCallback);
+router.get('/apple/callback', passport.authenticate('apple', { failureRedirect: '/login' }), authController.oauthCallback.bind(authController));
 
 // JWT Token endpoint for OAuth users
-router.post('/oauth/token', authController.generateOAuthToken);
+router.post('/oauth/token', authController.generateOAuthToken.bind(authController));
 
 export { router as authRoutes };

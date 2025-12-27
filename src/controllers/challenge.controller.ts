@@ -6,12 +6,32 @@ import { logger } from '@/utils/logger';
 export class ChallengeController {
   async getChallenges(req: Request, res: Response, next: NextFunction) {
     try {
-      const { page = 1, limit = 10, category, difficulty, status = 'ACTIVE' } = req.query;
+      const { page = 1, limit = 10, category, difficulty, status = 'ACTIVE', userOnly, participantStatus } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
+      const userId = (req as any).user?.id;
 
-      const where: any = { status };
-      if (category) where.category = category;
-      if (difficulty) where.difficultyLevel = difficulty;
+      let where: any = {};
+      
+      // If userOnly is true, filter by user's participated challenges
+      if (userOnly === 'true' && userId) {
+        const participantWhere: any = { userId };
+        
+        // If participantStatus is WON, filter by winning submissions
+        if (participantStatus === 'WON') {
+          participantWhere.submissions = {
+            some: { isWinner: true }
+          };
+        }
+        
+        where.participants = {
+          some: participantWhere
+        };
+      } else {
+        // Regular challenge filtering
+        where.status = status;
+        if (category) where.category = category;
+        if (difficulty) where.difficultyLevel = difficulty;
+      }
 
       const [challenges, total] = await Promise.all([
         prisma.challenge.findMany({

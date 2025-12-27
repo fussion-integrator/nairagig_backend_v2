@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { JobController } from '@/controllers/job.controller';
-import { authenticate, authorize } from '@/middleware/auth';
+import { authenticate, authorize, optionalAuth } from '@/middleware/auth';
 
 const router = Router();
 const jobController = new JobController();
 
-// Public routes
-router.get('/', jobController.getJobs.bind(jobController));
+// Routes with optional authentication
+router.get('/', optionalAuth, jobController.getJobs.bind(jobController));
 
 // Protected routes
 router.use(authenticate);
@@ -16,7 +16,8 @@ router.get('/:id', jobController.getJob.bind(jobController));
 router.post('/', authorize('CLIENT', 'FREELANCER'), jobController.createJob.bind(jobController));
 router.put('/:id', jobController.updateJob.bind(jobController));
 router.delete('/:id', jobController.deleteJob.bind(jobController));
-router.post('/:jobId/apply', authorize('FREELANCER'), jobController.applyToJob.bind(jobController));
+router.post('/:id/apply', authorize('FREELANCER'), jobController.applyToJob.bind(jobController));
+router.post('/award', jobController.awardJob.bind(jobController));
 router.get('/:id/applications', jobController.getJobApplications.bind(jobController));
 router.put('/:jobId/applications/:applicationId', jobController.updateApplication.bind(jobController));
 router.post('/:jobId/questions', jobController.askQuestion.bind(jobController));

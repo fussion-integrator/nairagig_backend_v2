@@ -1,4 +1,6 @@
 import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -19,10 +21,29 @@ import { messageRoutes } from '@/routes/message.routes';
 import { transactionRoutes } from '@/routes/transaction.routes';
 import { walletRoutes } from '@/routes/wallet.routes';
 import categoryRoutes from '@/routes/category.routes';
-import fileRoutes from '@/routes/file.routes';
+import { fileRoutes } from '@/routes/file.routes';
 import { paymentRoutes } from '@/routes/payment.routes';
+import sponsorshipTierRoutes from '@/routes/sponsorship-tier.routes';
+import sponsorshipRoutes from '@/routes/sponsorship.routes';
+import { notificationRoutes } from '@/routes/notification.routes';
+import { settingsRoutes } from '@/routes/settings.routes';
+import { billingRoutes } from '@/routes/billing.routes';
+import { debugRoutes } from '@/routes/debug.routes';
+import { setupSocketIO } from '@/config/socket';
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['polling', 'websocket']
+});
+
+// Setup Socket.IO
+setupSocketIO(io);
 
 // Security middleware
 app.use(helmet());
@@ -87,6 +108,12 @@ app.use(`/api/${config.apiVersion}/wallets`, walletRoutes);
 app.use(`/api/${config.apiVersion}/categories`, categoryRoutes);
 app.use(`/api/${config.apiVersion}/files`, fileRoutes);
 app.use(`/api/${config.apiVersion}/payments`, paymentRoutes);
+app.use(`/api/${config.apiVersion}/sponsorship-tiers`, sponsorshipTierRoutes);
+app.use(`/api/${config.apiVersion}/sponsorship`, sponsorshipRoutes);
+app.use(`/api/${config.apiVersion}/notifications`, notificationRoutes);
+app.use(`/api/${config.apiVersion}/settings`, settingsRoutes);
+app.use(`/api/${config.apiVersion}/billing`, billingRoutes);
+app.use(`/api/${config.apiVersion}/debug`, debugRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);
@@ -94,8 +121,9 @@ app.use(errorHandler);
 
 const PORT = config.port || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT} in ${config.nodeEnv} mode`);
 });
 
+export { app, io };
 export default app;

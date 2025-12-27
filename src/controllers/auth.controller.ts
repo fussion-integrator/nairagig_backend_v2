@@ -31,6 +31,9 @@ export class AuthController {
         data: { lastLoginAt: new Date() }
       });
 
+      // Record login session and history
+      await this.recordLoginSession(req, user.id, 'SUCCESS');
+
       logger.info(`OAuth login successful: ${user.email}`);
 
       const userData = encodeURIComponent(JSON.stringify({
@@ -131,6 +134,14 @@ export class AuthController {
               repositoryUrl: true,
               tags: true
             }
+          },
+          socialProfiles: {
+            select: {
+              id: true,
+              platform: true,
+              profileUrl: true,
+              username: true
+            }
           }
         }
       });
@@ -190,5 +201,68 @@ export class AuthController {
     } catch (error) {
       next(error);
     }
+  }
+
+  private async recordLoginSession(req: Request, userId: string, status: 'SUCCESS' | 'FAILED') {
+    try {
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+      const deviceInfo = this.parseUserAgent(userAgent);
+      const location = await this.getLocationFromIP(ipAddress);
+
+      // Record login history
+      await prisma.loginHistory.create({
+        data: {
+          userId,
+          deviceInfo,
+          ipAddress,
+          location,
+          userAgent,
+          status
+        }
+      });
+
+      // Create/update active session only for successful logins
+      if (status === 'SUCCESS') {
+        await prisma.userSession.upsert({
+          where: {
+            userId_userAgent: {
+              userId,
+              userAgent
+            }
+          },
+          update: {
+            lastActiveAt: new Date(),
+            isActive: true
+          },
+          create: {
+            userId,
+            deviceInfo,
+            ipAddress,
+            location,
+            userAgent,
+            isActive: true
+          }
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to record login session:', error);
+    }
+  }
+
+  private parseUserAgent(userAgent: string): string {
+    if (userAgent.includes('Chrome')) return 'Chrome on ' + (userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Mac') ? 'MacOS' : userAgent.includes('Linux') ? 'Linux' : 'Unknown');
+    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari on ' + (userAgent.includes('iPhone') ? 'iPhone' : userAgent.includes('iPad') ? 'iPad' : 'MacOS');
+    if (userAgent.includes('Firefox')) return 'Firefox on ' + (userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Mac') ? 'MacOS' : 'Linux');
+    if (userAgent.includes('Edge')) return 'Edge on Windows';
+    return 'Unknown device';
+  }
+
+  private async getLocationFromIP(ipAddress: string): Promise<string> {
+    // Simple IP-based location detection (in production, use a proper service)
+    if (ipAddress.startsWith('197.210') || ipAddress.startsWith('197.211')) return 'Lagos, Nigeria';
+    if (ipAddress.startsWith('105.112')) return 'Ibadan, Nigeria';
+    if (ipAddress.startsWith('102.89')) return 'Abuja, Nigeria';
+    return 'Nigeria';
   }
 }

@@ -6,6 +6,7 @@ import { logger } from '@/utils/logger';
 export class JobController {
   async getJobs(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = (req.user as any)?.id;
       const { page = 1, limit = 10, category, budgetMin, budgetMax, experienceLevel, status = 'OPEN' } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
@@ -34,10 +35,30 @@ export class JobController {
         prisma.job.count({ where })
       ]);
 
+      // Check application status for each job if user is authenticated
+      let jobsWithApplicationStatus = jobs;
+      if (userId) {
+        const userApplications = await prisma.jobApplication.findMany({
+          where: {
+            freelancerId: userId,
+            jobId: { in: jobs.map(job => job.id) }
+          },
+          select: { jobId: true, status: true }
+        });
+
+        const applicationMap = new Map(userApplications.map(app => [app.jobId, app.status]));
+        
+        jobsWithApplicationStatus = jobs.map(job => ({
+          ...job,
+          hasApplied: applicationMap.has(job.id),
+          userApplicationStatus: applicationMap.get(job.id) || null
+        }));
+      }
+
       res.json({
         success: true,
         data: {
-          jobs,
+          jobs: jobsWithApplicationStatus,
           pagination: {
             page: Number(page),
             limit: Number(limit),
@@ -53,16 +74,19 @@ export class JobController {
 
   async getJob(req: Request, res: Response, next: NextFunction) {
     try {
+      const userId = (req.user as any)?.id;
+      
       const job = await prisma.job.findUnique({
         where: { id: req.params.id },
         include: {
-          client: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true, reputationScore: true } },
+          client: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true, reputationScore: true, bio: true } },
           category: true,
           applications: {
             include: {
               freelancer: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true, reputationScore: true } }
             }
-          }
+          },
+          _count: { select: { applications: true } }
         }
       });
 
@@ -70,12 +94,26 @@ export class JobController {
         throw ApiError.notFound('Job not found');
       }
 
+      // Check if current user has applied
+      let userApplication = null;
+      if (userId) {
+        userApplication = await prisma.jobApplication.findUnique({
+          where: { jobId_freelancerId: { jobId: job.id, freelancerId: userId } }
+        });
+      }
+
       await prisma.job.update({
         where: { id: req.params.id },
         data: { viewCount: { increment: 1 } }
       });
 
-      res.json({ success: true, data: job });
+      const jobWithApplicationStatus = {
+        ...job,
+        hasApplied: !!userApplication,
+        userApplicationStatus: userApplication?.status || null
+      };
+
+      res.json({ success: true, data: jobWithApplicationStatus });
     } catch (error) {
       next(error);
     }
@@ -141,6 +179,10 @@ export class JobController {
           budgetType: budgetTypeMap[budgetType] || 'FIXED',
           visibility: visibilityMap[visibility] || 'PUBLIC',
           attachments: processedAttachments,
+          coreFeatures: coreFeatures || [],
+          timeline: timeline || [],
+          referenceLinks: referenceLinks || [],
+          managedByNairagig: req.body.managedByNairagig || false,
           status: validJobData.status || 'OPEN', // Default to OPEN if not specified
           clientId: userId
         },
@@ -165,9 +207,64 @@ export class JobController {
       if (!job) throw ApiError.notFound('Job not found');
       if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
 
+      const { 
+        categoryId, requiredSkills, experienceLevel, budgetType, visibility,
+        coreFeatures, timeline, referenceLinks, attachments,
+        ...validJobData 
+      } = req.body;
+      
+      // Apply same enum mappings as createJob
+      const experienceLevelMap: {[key: string]: string} = {
+        'entry': 'ENTRY',
+        'intermediate': 'INTERMEDIATE', 
+        'expert': 'EXPERT'
+      };
+      
+      const budgetTypeMap: {[key: string]: string} = {
+        'fixed': 'FIXED',
+        'hourly': 'HOURLY'
+      };
+      
+      const visibilityMap: {[key: string]: string} = {
+        'PUBLIC': 'PUBLIC',
+        'PRIVATE': 'PRIVATE',
+        'FEATURED': 'FEATURED'
+      };
+      
+      // Process attachments
+      let processedAttachments = [];
+      if (attachments) {
+        if (Array.isArray(attachments)) {
+          processedAttachments = attachments.map(att => {
+            if (typeof att === 'string') {
+              return { name: att, size: 0, type: 'unknown' };
+            }
+            return {
+              id: att.id || null,
+              name: att.name || 'Unknown',
+              size: att.size || 0,
+              type: att.type || 'unknown',
+              url: att.url || null
+            };
+          });
+        }
+      }
+
       const updatedJob = await prisma.job.update({
         where: { id: req.params.id },
-        data: req.body,
+        data: {
+          ...validJobData,
+          categoryId,
+          requiredSkills: requiredSkills || [],
+          experienceLevel: experienceLevelMap[experienceLevel] || experienceLevel,
+          budgetType: budgetTypeMap[budgetType] || budgetType,
+          visibility: visibilityMap[visibility] || visibility,
+          attachments: processedAttachments,
+          coreFeatures: coreFeatures || [],
+          timeline: timeline || [],
+          referenceLinks: referenceLinks || [],
+          managedByNairagig: req.body.managedByNairagig || false
+        },
         include: { client: true, category: true }
       });
 
@@ -180,9 +277,23 @@ export class JobController {
   async applyToJob(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;
-      const { jobId } = req.params;
-      const { coverLetter, proposedBudget, proposedTimeline } = req.body;
+      const { id: jobId } = req.params;
+      const { coverLetter, proposedBudget, proposedTimeline, attachments } = req.body;
 
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      // Check if job exists and is open
+      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) {
+        throw ApiError.notFound('Job not found');
+      }
+      if (job.status !== 'OPEN') {
+        throw ApiError.badRequest('Job is not accepting applications');
+      }
+
+      // Check if user already applied
       const existingApplication = await prisma.jobApplication.findUnique({
         where: { jobId_freelancerId: { jobId, freelancerId: userId } }
       });
@@ -191,13 +302,26 @@ export class JobController {
         throw ApiError.badRequest('Already applied to this job');
       }
 
+      // Convert proposedTimeline to number if it's a string
+      let timelineValue = null;
+      if (proposedTimeline) {
+        if (typeof proposedTimeline === 'string') {
+          // Extract numbers from string (e.g., "2 weeks" -> 2)
+          const match = proposedTimeline.match(/\d+/);
+          timelineValue = match ? parseInt(match[0]) : null;
+        } else if (typeof proposedTimeline === 'number') {
+          timelineValue = proposedTimeline;
+        }
+      }
+
       const application = await prisma.jobApplication.create({
         data: {
           jobId,
           freelancerId: userId,
-          coverLetter,
-          proposedBudget,
-          proposedTimeline,
+          coverLetter: coverLetter || '',
+          proposedBudget: proposedBudget ? parseFloat(proposedBudget.toString()) : null,
+          proposedTimeline: timelineValue,
+          attachments: attachments || [],
           status: 'PENDING'
         },
         include: {
@@ -205,6 +329,7 @@ export class JobController {
         }
       });
 
+      // Update job application count
       await prisma.job.update({
         where: { id: jobId },
         data: { applicationCount: { increment: 1 } }
@@ -399,6 +524,63 @@ export class JobController {
       });
 
       res.json({ success: true, data: updatedQuestion });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async awardJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { jobId, freelancerId } = req.body;
+
+      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) throw ApiError.notFound('Job not found');
+      if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
+      if (job.awardedTo) throw ApiError.badRequest('Job already awarded');
+
+      // Award job and create project
+      const [updatedJob, project] = await prisma.$transaction(async (tx) => {
+        const awardedJob = await tx.job.update({
+          where: { id: jobId },
+          data: {
+            awardedTo: freelancerId,
+            awardedAt: new Date(),
+            status: 'IN_PROGRESS'
+          }
+        });
+
+        const newProject = await tx.project.create({
+          data: {
+            title: job.title,
+            description: job.description,
+            clientId: userId,
+            freelancerId,
+            jobId,
+            agreedBudget: job.budgetMin || 0,
+            status: 'ACTIVE'
+          }
+        });
+
+        // Create project conversation
+        await tx.conversation.create({
+          data: {
+            type: 'PROJECT',
+            projectId: newProject.id,
+            title: `Project: ${job.title}`,
+            participants: {
+              create: [
+                { userId },
+                { userId: freelancerId }
+              ]
+            }
+          }
+        });
+
+        return [awardedJob, newProject];
+      });
+
+      res.json({ success: true, data: { job: updatedJob, project } });
     } catch (error) {
       next(error);
     }

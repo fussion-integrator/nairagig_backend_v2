@@ -1,31 +1,23 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
+import multer from 'multer';
+import { FileController } from '@/controllers/file.controller';
 import { authenticate } from '@/middleware/auth';
 
 const router = Router();
+const fileController = new FileController();
 
-// Simple file upload endpoint without multer for now
-router.post('/upload', authenticate, (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // For now, return a mock response
-    res.json({ 
-      success: true, 
-      data: [],
-      message: 'File upload endpoint - implementation pending'
-    });
-  } catch (error) {
-    next(error);
-  }
+// Configure multer for file uploads
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
 });
 
-router.delete('/:fileId', authenticate, (req: Request, res: Response, next: NextFunction) => {
-  try {
-    res.json({ 
-      success: true, 
-      message: 'File deleted successfully' 
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+// All routes require authentication
+router.use(authenticate);
 
-export default router;
+router.post('/upload', upload.array('files'), fileController.uploadFiles.bind(fileController));
+router.delete('/:fileId', fileController.deleteFile.bind(fileController));
+
+export { router as fileRoutes };

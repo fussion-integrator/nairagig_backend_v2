@@ -5,11 +5,16 @@ import { authenticate, authorize } from '@/middleware/auth';
 const router = Router();
 const userController = new UserController();
 
+// Public routes
+router.get('/leaderboard', userController.getLeaderboard.bind(userController));
+router.get('/:id/profile', userController.getPublicProfile.bind(userController));
+
 // Profile routes (authenticated users)
 router.put('/profile', authenticate, userController.updateProfile.bind(userController));
 router.post('/portfolio', authenticate, userController.addPortfolioItem.bind(userController));
 router.put('/portfolio/:portfolioId', authenticate, userController.updatePortfolioItem.bind(userController));
 router.delete('/portfolio/:portfolioId', authenticate, userController.deletePortfolioItem.bind(userController));
+router.get('/:id/rank', authenticate, userController.getUserRank.bind(userController));
 
 // Admin only routes
 router.use(authenticate);

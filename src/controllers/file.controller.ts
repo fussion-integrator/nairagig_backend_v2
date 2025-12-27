@@ -1,41 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import multer from 'multer';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  }
-});
-
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Allow common file types
-  const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Invalid file type'));
-  }
-};
-
-export const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter
-});
+import { logger } from '@/utils/logger';
+import fs from 'fs';
+import path from 'path';
 
 export class FileController {
   async uploadFiles(req: Request, res: Response, next: NextFunction) {
@@ -48,34 +16,46 @@ export class FileController {
         throw ApiError.badRequest('No files uploaded');
       }
 
-      const uploadedFiles = await Promise.all(
-        files.map(async (file) => {
-          const fileRecord = await prisma.file.create({
-            data: {
-              uploadedBy: userId,
-              originalName: file.originalname,
-              fileName: file.filename,
-              filePath: file.path,
-              fileSize: BigInt(file.size),
-              mimeType: file.mimetype,
-              fileExtension: path.extname(file.originalname),
-              fileCategory: 'DOCUMENT',
-              storageProvider: 'local'
-            }
-          });
+      const uploadedFiles = [];
 
-          return {
-            id: fileRecord.id,
-            name: file.originalname,
-            size: file.size,
-            type: file.mimetype,
-            url: `/uploads/${file.filename}`
-          };
-        })
-      );
+      for (const file of files) {
+        // Create file record in database
+        const fileRecord = await prisma.file.create({
+          data: {
+            uploadedBy: userId,
+            originalName: file.originalname,
+            fileName: file.filename,
+            filePath: file.path,
+            fileSize: BigInt(file.size),
+            mimeType: file.mimetype,
+            fileExtension: path.extname(file.originalname),
+            fileCategory: file.mimetype.startsWith('image/') ? 'MESSAGE_ATTACHMENT' : 'DOCUMENT',
+            storageProvider: 'local',
+            storagePath: file.path,
+            cdnUrl: `/uploads/${file.filename}`,
+            status: 'ACTIVE'
+          }
+        });
+
+        uploadedFiles.push({
+          id: fileRecord.id,
+          originalName: fileRecord.originalName,
+          fileName: fileRecord.fileName,
+          fileSize: fileRecord.fileSize.toString(),
+          mimeType: fileRecord.mimeType,
+          cdnUrl: fileRecord.cdnUrl
+        });
+      }
 
       res.json({ success: true, data: uploadedFiles });
     } catch (error) {
+      // Clean up uploaded files on error
+      if (req.files) {
+        const files = req.files as Express.Multer.File[];
+        files.forEach(file => {
+          fs.unlink(file.path, () => {});
+        });
+      }
       next(error);
     }
   }
@@ -89,15 +69,25 @@ export class FileController {
         where: { id: fileId }
       });
 
-      if (!file) throw ApiError.notFound('File not found');
-      if (file.uploadedBy !== userId) throw ApiError.forbidden('Access denied');
+      if (!file) {
+        throw ApiError.notFound('File not found');
+      }
 
-      await prisma.file.update({
-        where: { id: fileId },
-        data: { status: 'DELETED' }
+      if (file.uploadedBy !== userId) {
+        throw ApiError.forbidden('Access denied');
+      }
+
+      // Delete file from filesystem
+      if (file.filePath && fs.existsSync(file.filePath)) {
+        fs.unlinkSync(file.filePath);
+      }
+
+      // Delete file record
+      await prisma.file.delete({
+        where: { id: fileId }
       });
 
-      res.json({ success: true, message: 'File deleted successfully' });
+      res.json({ success: true, message: 'File deleted' });
     } catch (error) {
       next(error);
     }

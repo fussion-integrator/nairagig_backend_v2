@@ -7,6 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SponsorshipApplication {
+  id          String                    @id @default(uuid())
+  userId      String
+  tierId      String
+  fullName    String
+  email       String
+  reason      String
+  status      SponsorshipApplicationStatus @default(PENDING)
+  attachments Json                      @default("[]")
+  voiceNote   String?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  user        User                      @relation(fields: [userId], references: [id])
+  tier        SponsorshipTier           @relation(fields: [tierId], references: [id])
+
+  @@map("sponsorship_applications")
+}
+
+model SponsorshipTier {
+  id          String   @id @default(uuid())
+  name        String   @unique // "free", "bronze", "silver", "gold", "platinum"
+  displayName String   // "Free", "Bronze", "Silver", "Gold", "Platinum"
+  price       Decimal  @default(0)
+  currency    String   @default("NGN")
+  benefits    Json     @default("[]")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  applications SponsorshipApplication[]
+
+  @@map("sponsorship_tiers")
+}
+
 model User {
   id                    String                    @id @default(uuid())
   email                 String                    @unique
@@ -46,13 +80,31 @@ model User {
   reputationScore       Decimal?                  @default(0.00)
   state                 String?
   subscriptionExpiresAt DateTime?
-  subscriptionTier      String?                   @default("free")
+  subscriptionTier      String?                   @default("free") // "free", "bronze", "silver", "gold", "platinum"
+  sponsorshipTier       SponsorshipTier?          @relation(fields: [subscriptionTier], references: [name])
   timezone              String?
   title                 String?
   twoFactorEnabled      Boolean                   @default(false)
   twoFactorSecret       String?
   websiteUrl            String?
   yearsOfExperience     Int?
+  specialty             String?
+  // Settings fields
+  emailNotifications    Boolean                   @default(true)
+  smsNotifications      Boolean                   @default(false)
+  marketingEmails       Boolean                   @default(true)
+  twoFactorAuth         Boolean                   @default(false)
+  loginAlerts           Boolean                   @default(true)
+  sessionTimeout        Boolean                   @default(true)
+  profileVisibility     String                    @default("public")
+  language              String                    @default("en")
+  currency              String                    @default("NGN")
+  dateFormat            String                    @default("DD/MM/YYYY")
+  timeFormat            String                    @default("24h")
+  theme                 String                    @default("light")
+  compactMode           Boolean                   @default(false)
+  showOnlineStatus      Boolean                   @default(true)
+  allowSearchEngineIndexing Boolean               @default(true)
   challengeParticipants ChallengeParticipant[]
   challenges            Challenge[]               @relation("CreatedChallenges")
   sponsoredChallenges   Challenge[]               @relation("SponsoredChallenges")
@@ -63,12 +115,18 @@ model User {
   jobs                  Job[]                     @relation("ClientJobs")
   jobQuestions          JobQuestion[]             @relation("FreelancerQuestions")
   messageReads          MessageRead[]             @relation("MessageReads")
+  messageReactions      MessageReaction[]         @relation("MessageReactions")
+  messageMentions       MessageMention[]          @relation("MessageMentions")
+  messageDeliveries     MessageDelivery[]         @relation("MessageDeliveries")
+  messageModerations    MessageModeration[]       @relation("MessageModerations")
   messages              Message[]
   notifications         Notification[]
   paymentMethods        PaymentMethod[]
   portfolios            Portfolio[]
   projectMembers        ProjectMember[]
   milestones            ProjectMilestone[]
+  progressUpdates       ProjectProgressUpdate[] @relation("ProgressUpdates")
+  progressConfirmations ProjectProgressUpdate[] @relation("ProgressConfirmations")
   clientProjects        Project[]                 @relation("ClientProjects")
   freelancerProjects    Project[]                 @relation("FreelancerProjects")
   reviewsReceived       Review[]                  @relation("ReviewsOfUser")
@@ -80,8 +138,78 @@ model User {
   skillVerifications    UserSkill[]               @relation("SkillVerifications")
   socialProfiles        UserSocialProfile[]
   wallets               Wallet[]
+  sponsorshipApplications SponsorshipApplication[]
+  sessions              UserSession[]
+  loginHistory          LoginHistory[]
+  bankAccounts          BankAccount[]
+  paymentCards          PaymentCard[]
 
   @@map("users")
+}
+
+model UserSession {
+  id           String   @id @default(uuid())
+  userId       String
+  deviceInfo   String
+  ipAddress    String
+  location     String?
+  userAgent    String?
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, userAgent])
+  @@map("user_sessions")
+}
+
+model LoginHistory {
+  id         String      @id @default(uuid())
+  userId     String
+  deviceInfo String
+  ipAddress  String
+  location   String?
+  userAgent  String?
+  status     LoginStatus @default(SUCCESS)
+  createdAt  DateTime    @default(now())
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_history")
+}
+
+model BankAccount {
+  id            String              @id @default(uuid())
+  userId        String
+  bankName      String
+  bankCode      String?
+  accountNumber String
+  accountName   String
+  isDefault     Boolean             @default(false)
+  isVerified    Boolean             @default(false)
+  status        PaymentMethodStatus @default(ACTIVE)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bank_accounts")
+}
+
+model PaymentCard {
+  id         String              @id @default(uuid())
+  userId     String
+  cardType   String              // visa, mastercard, verve
+  last4      String
+  expiryMonth String
+  expiryYear String
+  cardToken  String?
+  isDefault  Boolean             @default(false)
+  isVerified Boolean             @default(false)
+  status     PaymentMethodStatus @default(ACTIVE)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payment_cards")
 }
 
 model UserSkill {
@@ -155,6 +283,10 @@ model Job {
   deadline            DateTime?
   deletedAt           DateTime?
   deliverables        String?
+  coreFeatures        Json             @default("[]")
+  timeline            Json             @default("[]")
+  referenceLinks      Json             @default("[]")
+  managedByNairagig   Boolean          @default(false)
   estimatedDuration   Int?
   images              String[]
   isFeatured          Boolean          @default(false)
@@ -242,6 +374,7 @@ model Project {
   conversations      Conversation[]
   members            ProjectMember[]
   milestones         ProjectMilestone[]
+  progressUpdates    ProjectProgressUpdate[]
   client             User               @relation("ClientProjects", fields: [clientId], references: [id])
   freelancer         User               @relation("FreelancerProjects", fields: [freelancerId], references: [id])
   job                Job?               @relation(fields: [jobId], references: [id])
@@ -285,6 +418,28 @@ model ProjectMilestone {
   project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_milestones")
+}
+
+model ProjectProgressUpdate {
+  id                String   @id @default(uuid())
+  projectId         String
+  updatedBy         String
+  oldProgress       Int
+  newProgress       Int
+  reason            String?
+  messageId         String?
+  status            ProgressUpdateStatus @default(PENDING)
+  confirmedAt       DateTime?
+  confirmedBy       String?
+  changeRequested   Boolean  @default(false)
+  changeReason      String?
+  createdAt         DateTime @default(now())
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  updater           User     @relation("ProgressUpdates", fields: [updatedBy], references: [id])
+  confirmer         User?    @relation("ProgressConfirmations", fields: [confirmedBy], references: [id])
+  message           Message? @relation(fields: [messageId], references: [id])
+
+  @@map("project_progress_updates")
 }
 
 model Wallet {
@@ -375,9 +530,19 @@ model Conversation {
   status             ConversationStatus        @default(ACTIVE)
   lastMessageAt      DateTime?
   lastMessagePreview String?
+  isArchived         Boolean                   @default(false)
+  isPinned           Boolean                   @default(false)
+  muteUntil          DateTime?
+  customData         Json                      @default("{}")
+  tags               String[]                  @default([])
+  priority           ConversationPriority      @default(NORMAL)
+  autoArchiveAfter   Int?
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
   participants       ConversationParticipant[]
+  settings           ConversationSettings?
+  labels             ConversationLabel[]
+  security           ConversationSecurity?
   challenge          Challenge?                @relation(fields: [challengeId], references: [id])
   project            Project?                  @relation(fields: [projectId], references: [id])
   messages           Message[]
@@ -385,14 +550,62 @@ model Conversation {
   @@map("conversations")
 }
 
-model ConversationParticipant {
+model ConversationSettings {
+  id               String       @id @default(uuid())
+  conversationId   String       @unique
+  allowFileSharing Boolean      @default(true)
+  allowReactions   Boolean      @default(true)
+  allowThreads     Boolean      @default(true)
+  maxFileSize      Int          @default(10485760)
+  retentionDays    Int?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("conversation_settings")
+}
+
+model ConversationLabel {
   id             String       @id @default(uuid())
   conversationId String
-  userId         String
-  joinedAt       DateTime     @default(now())
-  lastReadAt     DateTime?
+  name           String
+  color          String       @default("#6B7280")
+  createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, name])
+  @@map("conversation_labels")
+}
+
+model ConversationSecurity {
+  id             String       @id @default(uuid())
+  conversationId String       @unique
+  isEncrypted    Boolean      @default(false)
+  keyRotationAt  DateTime?
+  encryptionKey  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("conversation_security")
+}
+
+model ConversationParticipant {
+  id               String          @id @default(uuid())
+  conversationId   String
+  userId           String
+  role             ParticipantRole @default(MEMBER)
+  permissions      Json            @default("{}")
+  isActive         Boolean         @default(true)
+  mutedUntil       DateTime?
+  customTitle      String?
+  notifyOnMessage  Boolean         @default(true)
+  notifyOnMention  Boolean         @default(true)
+  notifyOnReaction Boolean         @default(false)
+  joinedAt         DateTime        @default(now())
+  lastReadAt       DateTime?
+  conversation     Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@map("conversation_participants")
@@ -410,15 +623,81 @@ model Message {
   isDeleted      Boolean       @default(false)
   isEdited       Boolean       @default(false)
   replyToId      String?
+  threadId       String?
   threadCount    Int           @default(0)
   attachments    Json          @default("[]")
+  isSystemMessage Boolean      @default(false)
+  systemData     Json?
+  actionType     String?
+  actionData     Json?
+  priority       MessagePriority @default(NORMAL)
   reads          MessageRead[]
+  reactions      MessageReaction[]
+  mentions       MessageMention[]
+  deliveries     MessageDelivery[]
+  progressUpdates ProjectProgressUpdate[]
+  moderation     MessageModeration?
   conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   replyTo        Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
   replies        Message[]     @relation("MessageReplies")
+  thread         Message?      @relation("MessageThread", fields: [threadId], references: [id])
+  threadMessages Message[]     @relation("MessageThread")
   sender         User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@map("messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+model MessageMention {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation("MessageMentions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_mentions")
+}
+
+model MessageDelivery {
+  id          String         @id @default(uuid())
+  messageId   String
+  userId      String
+  status      DeliveryStatus @default(SENT)
+  deliveredAt DateTime?
+  failedAt    DateTime?
+  retryCount  Int            @default(0)
+  message     Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User           @relation("MessageDeliveries", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_deliveries")
+}
+
+model MessageModeration {
+  id          String           @id @default(uuid())
+  messageId   String           @unique
+  status      ModerationStatus @default(PENDING)
+  flagReason  String?
+  moderatedBy String?
+  moderatedAt DateTime?
+  message     Message          @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  moderator   User?            @relation("MessageModerations", fields: [moderatedBy], references: [id])
+
+  @@map("message_moderations")
 }
 
 model MessageRead {
@@ -876,6 +1155,21 @@ enum ConversationStatus {
   BLOCKED
 }
 
+enum ConversationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ParticipantRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+  OBSERVER
+}
+
 enum MessageType {
   TEXT
   IMAGE
@@ -883,6 +1177,28 @@ enum MessageType {
   SYSTEM
   AUDIO
   VIDEO
+  ACTION
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DeliveryStatus {
+  SENT
+  DELIVERED
+  FAILED
+  RETRY
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+  REMOVED
 }
 
 enum NotificationType {
@@ -970,4 +1286,23 @@ enum AchievementRarity {
   RARE
   EPIC
   LEGENDARY
+}
+
+enum SponsorshipApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LoginStatus {
+  SUCCESS
+  FAILED
+  BLOCKED
+}
+
+enum ProgressUpdateStatus {
+  PENDING
+  CONFIRMED
+  CHANGE_REQUESTED
 }
