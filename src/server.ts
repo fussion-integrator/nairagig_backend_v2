@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import passport from '@/config/passport';
 import rateLimit from 'express-rate-limit';
 import { config } from '@/config/config';
@@ -29,6 +30,9 @@ import { notificationRoutes } from '@/routes/notification.routes';
 import { settingsRoutes } from '@/routes/settings.routes';
 import { billingRoutes } from '@/routes/billing.routes';
 import { debugRoutes } from '@/routes/debug.routes';
+import rewardRoutes from '@/routes/reward.routes';
+import { adminRewardRoutes } from '@/routes/admin-reward.routes';
+import { verificationRoutes } from '@/routes/verification.routes';
 import { setupSocketIO } from '@/config/socket';
 
 const app = express();
@@ -77,6 +81,7 @@ app.use('/api/', limiter);
 
 // Body parsing middleware
 app.use(compression());
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -113,6 +118,9 @@ app.use(`/api/${config.apiVersion}/sponsorship`, sponsorshipRoutes);
 app.use(`/api/${config.apiVersion}/notifications`, notificationRoutes);
 app.use(`/api/${config.apiVersion}/settings`, settingsRoutes);
 app.use(`/api/${config.apiVersion}/billing`, billingRoutes);
+app.use(`/api/${config.apiVersion}/rewards`, rewardRoutes);
+app.use(`/api/${config.apiVersion}/admin/rewards`, adminRewardRoutes);
+app.use(`/api/${config.apiVersion}/verifications`, verificationRoutes);
 app.use(`/api/${config.apiVersion}/debug`, debugRoutes);
 
 // Error handling middleware

@@ -170,7 +170,15 @@ export class AuthController {
       const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret) as { userId: string };
       
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId }
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          profileImageUrl: true
+        }
       });
 
       if (!user) {
@@ -192,10 +200,9 @@ export class AuthController {
       res.json({
         success: true,
         data: {
-          tokens: {
-            accessToken: newAccessToken,
-            refreshToken: newRefreshToken
-          }
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+          user
         }
       });
     } catch (error) {

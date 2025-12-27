@@ -128,6 +128,39 @@ export function setupSocketIO(io: Server) {
     socket.on('disconnect', (reason) => {
       console.log(`🔌 User ${socket.userId} disconnected: ${reason}`);
     });
+
+    // WebRTC Signaling Events
+    socket.on('call-offer', (data: { offer: RTCSessionDescriptionInit, to: string, type: 'voice' | 'video' }) => {
+      console.log(`📞 Call offer from ${socket.userId} to ${data.to}`);
+      socket.to(`user_${data.to}`).emit('incoming-call', {
+        offer: data.offer,
+        from: socket.userId,
+        type: data.type,
+        caller: socket.userData
+      });
+    });
+
+    socket.on('call-answer', (data: { answer: RTCSessionDescriptionInit, to: string }) => {
+      console.log(`📞 Call answer from ${socket.userId} to ${data.to}`);
+      socket.to(`user_${data.to}`).emit('call-answered', {
+        answer: data.answer,
+        from: socket.userId
+      });
+    });
+
+    socket.on('ice-candidate', (data: { candidate: RTCIceCandidate, to: string }) => {
+      socket.to(`user_${data.to}`).emit('ice-candidate', {
+        candidate: data.candidate,
+        from: socket.userId
+      });
+    });
+
+    socket.on('call-end', (data: { to: string }) => {
+      console.log(`📞 Call ended by ${socket.userId}`);
+      socket.to(`user_${data.to}`).emit('call-ended', {
+        from: socket.userId
+      });
+    });
   });
 }
 

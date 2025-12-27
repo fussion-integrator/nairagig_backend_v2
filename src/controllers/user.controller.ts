@@ -430,6 +430,154 @@ export class UserController {
     }
   }
 
+  async getCurrentUserProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          profileImageUrl: true,
+          phoneNumber: true,
+          title: true,
+          bio: true,
+          city: true,
+          country: true,
+          hourlyRate: true,
+          availabilityStatus: true,
+          specialty: true,
+          portfolioUrl: true,
+          yearsOfExperience: true,
+          role: true,
+          status: true,
+          referralCode: true,
+          createdAt: true,
+          emailVerifiedAt: true,
+          phoneVerifiedAt: true,
+          kycVerifiedAt: true,
+          skills: {
+            select: {
+              skillName: true
+            }
+          },
+          portfolios: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              liveUrl: true,
+              repositoryUrl: true,
+              tags: true
+            }
+          },
+          socialProfiles: {
+            select: {
+              platform: true,
+              profileUrl: true,
+              username: true
+            }
+          }
+        }
+      });
+
+      if (!user) {
+        throw ApiError.notFound('User not found');
+      }
+
+      // Transform skills array
+      const transformedUser = {
+        ...user,
+        skills: user.skills.map(skill => skill.skillName),
+        location: user.city && user.country ? `${user.city}, ${user.country}` : user.city || user.country,
+        website: user.portfolioUrl,
+        experience: user.yearsOfExperience ? `${user.yearsOfExperience} years` : undefined,
+        education: undefined, // Add if you have education field
+        joinedAt: user.createdAt,
+        isVerified: !!(user.emailVerifiedAt || user.phoneVerifiedAt || user.kycVerifiedAt),
+        tier: 'BRONZE' // Default tier since field doesn't exist
+      };
+
+      res.json({
+        success: true,
+        data: transformedUser
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurrentUserStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const [user, projectStats, walletStats, reviewStats] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { role: true }
+        }),
+        prisma.project.aggregate({
+          where: {
+            OR: [
+              { clientId: userId },
+              { freelancerId: userId }
+            ],
+            status: 'COMPLETED'
+          },
+          _count: true,
+          _sum: {
+            budget: true
+          }
+        }).catch(() => ({ _count: 0, _sum: { budget: 0 } })),
+        prisma.wallet.findFirst({
+          where: { userId },
+          select: {
+            totalEarned: true
+          }
+        }).catch(() => null),
+        prisma.review.aggregate({
+          where: { revieweeId: userId },
+          _avg: {
+            overallRating: true
+          },
+          _count: true
+        }).catch(() => ({ _avg: { overallRating: 0 }, _count: 0 }))
+      ]);
+
+      if (!user) {
+        throw ApiError.notFound('User not found');
+      }
+
+      const stats = {
+        totalEarnings: walletStats?.totalEarned || 0,
+        completedProjects: projectStats._count || 0,
+        averageRating: reviewStats._avg.overallRating || 0,
+        totalReviews: reviewStats._count || 0,
+        responseTime: '< 1 hour', // Default value, implement actual calculation if needed
+        successRate: projectStats._count > 0 ? 95 : 0 // Default value, implement actual calculation if needed
+      };
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user?.id;
@@ -663,6 +811,116 @@ export class UserController {
       });
     } catch (error) {
       logger.error('Update portfolio error:', error);
+      next(error);
+    }
+  }
+
+  async deleteSocialLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { linkId } = req.params;
+      const userId = (req as any).user?.id;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const socialLink = await prisma.userSocialProfile.findFirst({
+        where: { 
+          id: linkId,
+          userId 
+        }
+      });
+
+      if (!socialLink) {
+        throw ApiError.notFound('Social link not found');
+      }
+
+      await prisma.userSocialProfile.delete({
+        where: { id: linkId }
+      });
+
+      logger.info(`Social link deleted: ${linkId}`);
+
+      res.json({
+        success: true,
+        message: 'Social link deleted successfully'
+      });
+    } catch (error) {
+      logger.error('Delete social link error:', error);
+      next(error);
+    }
+  }
+
+  async addSocialLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const { platform, profileUrl, username } = req.body;
+
+      const socialLink = await prisma.userSocialProfile.create({
+        data: {
+          userId,
+          platform,
+          profileUrl,
+          username: username || null
+        }
+      });
+
+      logger.info(`Social link added: ${socialLink.id} for user ${userId}`);
+
+      res.status(201).json({
+        success: true,
+        data: socialLink
+      });
+    } catch (error) {
+      logger.error('Add social link error:', error);
+      next(error);
+    }
+  }
+
+  async updateSocialLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { linkId } = req.params;
+      const userId = (req as any).user?.id;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const { platform, profileUrl, username } = req.body;
+
+      const socialLink = await prisma.userSocialProfile.findFirst({
+        where: { 
+          id: linkId,
+          userId 
+        }
+      });
+
+      if (!socialLink) {
+        throw ApiError.notFound('Social link not found');
+      }
+
+      const updatedSocialLink = await prisma.userSocialProfile.update({
+        where: { id: linkId },
+        data: {
+          platform,
+          profileUrl,
+          username: username || null
+        }
+      });
+
+      logger.info(`Social link updated: ${linkId}`);
+
+      res.json({
+        success: true,
+        data: updatedSocialLink
+      });
+    } catch (error) {
+      logger.error('Update social link error:', error);
       next(error);
     }
   }

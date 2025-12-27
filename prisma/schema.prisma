@@ -48,6 +48,7 @@ model User {
   firstName             String
   lastName              String
   phoneNumber           String?                   @unique
+  referralCode          String?                   @unique
   bio                   String?
   hourlyRate            Decimal?
   role                  UserRole                  @default(FREELANCER)
@@ -143,6 +144,13 @@ model User {
   loginHistory          LoginHistory[]
   bankAccounts          BankAccount[]
   paymentCards          PaymentCard[]
+  rewards               Reward[]
+  rewardStats           UserRewardStats?
+  referrals             Referral[]             @relation("ReferrerReferrals")
+  referredBy            Referral[]             @relation("RefereeReferrals")
+  streaks               UserStreak[]
+  badges                UserBadge[]
+  leaderboardEntries    LeaderboardEntry[]
 
   @@map("users")
 }
@@ -1305,4 +1313,271 @@ enum ProgressUpdateStatus {
   PENDING
   CONFIRMED
   CHANGE_REQUESTED
+}
+
+// Reward System Models
+model Reward {
+  id          String        @id @default(uuid())
+  userId      String
+  type        RewardType
+  action      String        // 'profile_complete', 'first_job', etc.
+  amount      Decimal       @default(0)
+  points      Int           @default(0)
+  status      RewardStatus  @default(PENDING)
+  metadata    Json          @default("{}")
+  expiresAt   DateTime?
+  claimedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rewards")
+}
+
+model UserRewardStats {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  totalEarned     Decimal  @default(0)
+  totalPoints     Int      @default(0)
+  currentStreak   Int      @default(0)
+  longestStreak   Int      @default(0)
+  tier            UserTier @default(BRONZE)
+  nextTierPoints  Int      @default(1000)
+  lifetimeEarned  Decimal  @default(0)
+  monthlyEarned   Decimal  @default(0)
+  weeklyEarned    Decimal  @default(0)
+  lastRewardAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_reward_stats")
+}
+
+model Referral {
+  id              String        @id @default(uuid())
+  referrerId      String
+  refereeId       String
+  referralCode    String        @unique
+  status          ReferralStatus @default(PENDING)
+  rewardAmount    Decimal       @default(0)
+  rewardPaid      Boolean       @default(false)
+  rewardPaidAt    DateTime?
+  completedAt     DateTime?
+  metadata        Json          @default("{}")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  referrer        User          @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  referee         User          @relation("RefereeReferrals", fields: [refereeId], references: [id])
+
+  @@unique([referrerId, refereeId])
+  @@map("referrals")
+}
+
+model UserStreak {
+  id            String      @id @default(uuid())
+  userId        String
+  streakType    StreakType
+  currentCount  Int         @default(0)
+  maxCount      Int         @default(0)
+  lastActiveAt  DateTime?
+  isActive      Boolean     @default(true)
+  metadata      Json        @default("{}")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+  @@map("user_streaks")
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  title       String
+  description String
+  category    BadgeCategory
+  icon        String?
+  color       String      @default("#6B7280")
+  rarity      BadgeRarity @default(COMMON)
+  criteria    Json        @default("{}")
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id          String    @id @default(uuid())
+  userId      String
+  badgeId     String
+  earnedAt    DateTime  @default(now())
+  isVisible   Boolean   @default(true)
+  metadata    Json      @default("{}")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Leaderboard {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  title       String
+  description String?
+  type        LeaderboardType
+  period      LeaderboardPeriod
+  category    String?
+  isActive    Boolean            @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  metadata    Json               @default("{}")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  entries     LeaderboardEntry[]
+
+  @@map("leaderboards")
+}
+
+model LeaderboardEntry {
+  id            String      @id @default(uuid())
+  leaderboardId String
+  userId        String
+  rank          Int
+  score         Decimal     @default(0)
+  metadata      Json        @default("{}")
+  period        String      // "2024-01", "2024-W01", etc.
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderboardId, userId, period])
+  @@map("leaderboard_entries")
+}
+
+model RewardConfig {
+  id          String      @id @default(uuid())
+  action      String      @unique
+  type        RewardType
+  amount      Decimal     @default(0)
+  points      Int         @default(0)
+  isActive    Boolean     @default(true)
+  conditions  Json        @default("{}")
+  limits      Json        @default("{}")
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("reward_configs")
+}
+
+model Campaign {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  title       String
+  description String?
+  type        CampaignType
+  status      CampaignStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+  budget      Decimal        @default(0)
+  spent       Decimal        @default(0)
+  conditions  Json           @default("{}")
+  rewards     Json           @default("{}")
+  metadata    Json           @default("{}")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("campaigns")
+}
+
+enum RewardType {
+  ONBOARDING
+  ACTIVITY
+  REFERRAL
+  MILESTONE
+  CAMPAIGN
+  BONUS
+}
+
+enum RewardStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum UserTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum StreakType {
+  DAILY_LOGIN
+  WEEKLY_ACTIVITY
+  JOB_COMPLETION
+  CHALLENGE_PARTICIPATION
+}
+
+enum BadgeCategory {
+  ACHIEVEMENT
+  SKILL
+  MILESTONE
+  SPECIAL
+  SEASONAL
+}
+
+enum BadgeRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum LeaderboardType {
+  EARNINGS
+  JOBS_COMPLETED
+  CHALLENGES_WON
+  REFERRALS
+  POINTS
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ALL_TIME
+}
+
+enum CampaignType {
+  ONBOARDING
+  RETENTION
+  ENGAGEMENT
+  SEASONAL
+  REFERRAL
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
 }

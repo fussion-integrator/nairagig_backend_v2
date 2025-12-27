@@ -21,7 +21,13 @@ declare global {
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Try to get token from Authorization header first (for API clients)
+    let token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    // If no Authorization header, try to get from httpOnly cookie
+    if (!token) {
+      token = req.cookies?.access_token;
+    }
 
     if (!token) {
       throw ApiError.unauthorized('Access token required');
@@ -74,7 +80,13 @@ export const authorize = (...roles: string[]) => {
 
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Try to get token from Authorization header first (for API clients)
+    let token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    // If no Authorization header, try to get from httpOnly cookie
+    if (!token) {
+      token = req.cookies?.access_token;
+    }
 
     if (!token) {
       return next();

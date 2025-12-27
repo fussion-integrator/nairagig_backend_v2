@@ -15,15 +15,18 @@
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
-    "seed:tiers": "ts-node prisma/seed-tiers.ts"
+    "seed:tiers": "ts-node prisma/seed-tiers.ts",
+    "seed:rewards": "ts-node prisma/seed-rewards.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",
+    "@types/cookie-parser": "^1.4.10",
     "@types/socket.io": "^3.0.1",
     "aws-sdk": "^2.1506.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
