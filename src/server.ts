@@ -33,6 +33,10 @@ import { debugRoutes } from '@/routes/debug.routes';
 import rewardRoutes from '@/routes/reward.routes';
 import { adminRewardRoutes } from '@/routes/admin-reward.routes';
 import { verificationRoutes } from '@/routes/verification.routes';
+import { proposalRoutes } from '@/routes/proposal.routes';
+import { contractRoutes } from '@/routes/contract.routes';
+import { disputeRoutes } from '@/routes/dispute.routes';
+import { reviewRoutes } from '@/routes/review.routes';
 import { setupSocketIO } from '@/config/socket';
 
 const app = express();
@@ -121,6 +125,10 @@ app.use(`/api/${config.apiVersion}/billing`, billingRoutes);
 app.use(`/api/${config.apiVersion}/rewards`, rewardRoutes);
 app.use(`/api/${config.apiVersion}/admin/rewards`, adminRewardRoutes);
 app.use(`/api/${config.apiVersion}/verifications`, verificationRoutes);
+app.use(`/api/${config.apiVersion}/proposals`, proposalRoutes);
+app.use(`/api/${config.apiVersion}/contracts`, contractRoutes);
+app.use(`/api/${config.apiVersion}/disputes`, disputeRoutes);
+app.use(`/api/${config.apiVersion}/reviews`, reviewRoutes);
 app.use(`/api/${config.apiVersion}/debug`, debugRoutes);
 
 // Error handling middleware

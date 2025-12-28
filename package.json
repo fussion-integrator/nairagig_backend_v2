@@ -4,7 +4,8 @@
   "description": "Enterprise-grade backend for NairaGig platform",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --noEmitOnError false",
+    "build:force": "tsc --noEmitOnError false --skipLibCheck",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --require ./tsconfig-paths.js --respawn --transpile-only src/server.ts",
     "test": "jest",

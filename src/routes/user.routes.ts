@@ -20,6 +20,7 @@ router.post('/social-links', authenticate, userController.addSocialLink.bind(use
 router.put('/social-links/:linkId', authenticate, userController.updateSocialLink.bind(userController));
 router.delete('/social-links/:linkId', authenticate, userController.deleteSocialLink.bind(userController));
 router.get('/:id/rank', authenticate, userController.getUserRank.bind(userController));
+router.get('/:id/submissions', authenticate, userController.getUserSubmissions.bind(userController));
 
 // Admin only routes
 router.get('/', authenticate, authorize('ADMIN'), userController.getUsers.bind(userController));

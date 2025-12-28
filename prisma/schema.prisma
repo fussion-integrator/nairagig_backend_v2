@@ -151,6 +151,12 @@ model User {
   streaks               UserStreak[]
   badges                UserBadge[]
   leaderboardEntries    LeaderboardEntry[]
+  clientContracts       Contract[]             @relation("ClientContracts")
+  freelancerContracts   Contract[]             @relation("FreelancerContracts")
+  raisedDisputes        Dispute[]              @relation("RaisedDisputes")
+  disputesAgainst       Dispute[]              @relation("DisputesAgainst")
+  resolvedDisputes      Dispute[]              @relation("ResolvedDisputes")
+  disputeResponses      DisputeResponse[]
 
   @@map("users")
 }
@@ -312,6 +318,8 @@ model Job {
   category            Category?        @relation(fields: [categoryId], references: [id])
   client              User             @relation("ClientJobs", fields: [clientId], references: [id])
   project             Project?
+  contracts           Contract[]
+  disputes            Dispute[]
 
   @@map("jobs")
 }
@@ -387,6 +395,8 @@ model Project {
   freelancer         User               @relation("FreelancerProjects", fields: [freelancerId], references: [id])
   job                Job?               @relation(fields: [jobId], references: [id])
   reviews            Review[]
+  contract           Contract?
+  disputes           Dispute[]
 
   @@map("projects")
 }
@@ -1296,11 +1306,122 @@ enum AchievementRarity {
   LEGENDARY
 }
 
-enum SponsorshipApplicationStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
+model Contract {
+  id                String            @id @default(uuid())
+  projectId         String            @unique
+  jobId             String?
+  clientId          String
+  freelancerId      String
+  title             String
+  description       String?
+  terms             String
+  amount            Decimal
+  currency          String            @default("NGN")
+  paymentSchedule   PaymentSchedule   @default(MILESTONE)
+  startDate         DateTime
+  endDate           DateTime?
+  status            ContractStatus    @default(ACTIVE)
+  signedByClient    Boolean           @default(false)
+  signedByFreelancer Boolean          @default(false)
+  clientSignedAt    DateTime?
+  freelancerSignedAt DateTime?
+  completedAt       DateTime?
+  terminatedAt      DateTime?
+  terminationReason String?
+  revisionLimit     Int               @default(3)
+  deliverables      Json              @default("[]")
+  milestones        Json              @default("[]")
+  attachments       Json              @default("[]")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  job               Job?              @relation(fields: [jobId], references: [id])
+  client            User              @relation("ClientContracts", fields: [clientId], references: [id])
+  freelancer        User              @relation("FreelancerContracts", fields: [freelancerId], references: [id])
+  disputes          Dispute[]
+
+  @@map("contracts")
+}
+
+model Dispute {
+  id                String          @id @default(uuid())
+  projectId         String?
+  contractId        String?
+  jobId             String?
+  raisedBy          String
+  againstUser       String
+  title             String
+  description       String
+  category          DisputeCategory @default(OTHER)
+  priority          DisputePriority @default(NORMAL)
+  status            DisputeStatus   @default(OPEN)
+  amount            Decimal?
+  currency          String          @default("NGN")
+  evidence          Json            @default("[]")
+  adminNotes        String?
+  resolution        String?
+  resolvedBy        String?
+  resolvedAt        DateTime?
+  escalatedAt       DateTime?
+  dueDate           DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  project           Project?        @relation(fields: [projectId], references: [id])
+  contract          Contract?       @relation(fields: [contractId], references: [id])
+  job               Job?            @relation(fields: [jobId], references: [id])
+  raisedByUser      User            @relation("RaisedDisputes", fields: [raisedBy], references: [id])
+  againstUserRef    User            @relation("DisputesAgainst", fields: [againstUser], references: [id])
+  resolver          User?           @relation("ResolvedDisputes", fields: [resolvedBy], references: [id])
+  responses         DisputeResponse[]
+
+  @@map("disputes")
+}
+
+model DisputeResponse {
+  id          String    @id @default(uuid())
+  disputeId   String
+  userId      String
+  message     String
+  attachments Json      @default("[]")
+  isAdminResponse Boolean @default(false)
+  createdAt   DateTime  @default(now())
+  dispute     Dispute   @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("dispute_responses")
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  DISPUTED
+}
+
+enum DisputeCategory {
+  PAYMENT
+  QUALITY
+  TIMELINE
+  SCOPE
+  COMMUNICATION
+  BREACH_OF_CONTRACT
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum DisputePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum LoginStatus {

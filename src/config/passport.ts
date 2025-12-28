@@ -38,7 +38,7 @@ passport.use(new GoogleStrategy({
             email: profile.emails?.[0]?.value || '',
             firstName: profile.name?.givenName || '',
             lastName: profile.name?.familyName || '',
-            profileImageUrl: profile.photos?.[0]?.value,
+            profileImageUrl: profile.photos?.[0]?.value || null,
             authProvider: 'GOOGLE',
             emailVerifiedAt: new Date()
           }
@@ -70,7 +70,7 @@ passport.use('linkedin', new OAuth2Strategy({
       }
     });
     
-    const linkedinProfile = await response.json();
+    const linkedinProfile: any = await response.json();
     
     let user = await prisma.user.findUnique({
       where: { linkedinId: linkedinProfile.sub }
@@ -97,7 +97,7 @@ passport.use('linkedin', new OAuth2Strategy({
             email: linkedinProfile.email || '',
             firstName: linkedinProfile.given_name || '',
             lastName: linkedinProfile.family_name || '',
-            profileImageUrl: linkedinProfile.picture,
+            profileImageUrl: linkedinProfile.picture || null,
             authProvider: 'LINKEDIN',
             emailVerifiedAt: new Date()
           }
@@ -118,8 +118,9 @@ passport.use(new AppleStrategy({
   teamID: config.appleTeamId!,
   keyID: config.appleKeyId!,
   privateKeyLocation: config.applePrivateKeyPath!,
-  callbackURL: 'http://localhost:3000/api/v1/auth/apple/callback'
-}, async (accessToken: string, refreshToken: string, idToken: any, profile: any, done: any) => {
+  callbackURL: 'http://localhost:3000/api/v1/auth/apple/callback',
+  passReqToCallback: false
+} as any, async (accessToken: string, refreshToken: string, idToken: any, profile: any, done: any) => {
   try {
     const appleId = profile.id || idToken.sub;
     const email = profile.email || idToken.email;

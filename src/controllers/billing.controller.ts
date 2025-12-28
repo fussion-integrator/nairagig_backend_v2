@@ -321,7 +321,7 @@ export class BillingController {
         }
       });
 
-      const data = await response.json();
+      const data = await response.json() as any;
       
       if (!data.status) {
         throw new Error('Failed to fetch banks from Paystack');
@@ -381,7 +381,7 @@ export class BillingController {
         }
       });
 
-      const data = await response.json();
+      const data = await response.json() as any;
       
       console.log('Paystack response:', {
         status: response.status,
@@ -453,7 +453,7 @@ export class BillingController {
         }
       });
 
-      const data = await response.json();
+      const data = await response.json() as any;
       
       if (!response.ok || !data.status) {
         return res.status(400).json({

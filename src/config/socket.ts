@@ -42,7 +42,7 @@ export function setupSocketIO(io: Server) {
       socket.userData = user;
       
       next();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Socket auth error:', error.message);
       next(new Error('Authentication failed'));
     }
@@ -125,12 +125,12 @@ export function setupSocketIO(io: Server) {
       });
     });
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', (reason: string) => {
       console.log(`🔌 User ${socket.userId} disconnected: ${reason}`);
     });
 
     // WebRTC Signaling Events
-    socket.on('call-offer', (data: { offer: RTCSessionDescriptionInit, to: string, type: 'voice' | 'video' }) => {
+    socket.on('call-offer', (data: { offer: any, to: string, type: 'voice' | 'video' }) => {
       console.log(`📞 Call offer from ${socket.userId} to ${data.to}`);
       socket.to(`user_${data.to}`).emit('incoming-call', {
         offer: data.offer,
@@ -140,7 +140,7 @@ export function setupSocketIO(io: Server) {
       });
     });
 
-    socket.on('call-answer', (data: { answer: RTCSessionDescriptionInit, to: string }) => {
+    socket.on('call-answer', (data: { answer: any, to: string }) => {
       console.log(`📞 Call answer from ${socket.userId} to ${data.to}`);
       socket.to(`user_${data.to}`).emit('call-answered', {
         answer: data.answer,
@@ -148,7 +148,7 @@ export function setupSocketIO(io: Server) {
       });
     });
 
-    socket.on('ice-candidate', (data: { candidate: RTCIceCandidate, to: string }) => {
+    socket.on('ice-candidate', (data: { candidate: any, to: string }) => {
       socket.to(`user_${data.to}`).emit('ice-candidate', {
         candidate: data.candidate,
         from: socket.userId

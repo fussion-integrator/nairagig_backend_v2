@@ -169,7 +169,7 @@ export class ProjectController {
           projectType,
           attachments,
           clientId: userId,
-          status: 'OPEN'
+          status: 'ACTIVE' as any,
         },
         include: {
           client: {

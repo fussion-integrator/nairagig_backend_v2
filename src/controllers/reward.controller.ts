@@ -99,24 +99,24 @@ export class RewardController {
       });
 
       // Update user wallet if reward has amount
-      if (reward.amount > 0) {
+      if (Number(reward.amount) > 0) {
         await prisma.wallet.upsert({
           where: { userId_currency: { userId, currency: 'NGN' } },
           update: {
-            availableBalance: { increment: reward.amount },
-            totalEarned: { increment: reward.amount }
+            availableBalance: { increment: Number(reward.amount) },
+            totalEarned: { increment: Number(reward.amount) }
           },
           create: {
             userId,
             currency: 'NGN',
-            availableBalance: reward.amount,
-            totalEarned: reward.amount
+            availableBalance: Number(reward.amount),
+            totalEarned: Number(reward.amount)
           }
         });
       }
 
       // Update user reward stats
-      await this.updateUserRewardStats(userId, reward.amount, reward.points);
+      await this.updateUserRewardStats(userId, Number(reward.amount), Number(reward.points));
 
       res.json({ success: true, data: updatedReward });
     } catch (error) {

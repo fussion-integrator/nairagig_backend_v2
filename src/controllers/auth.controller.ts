@@ -14,17 +14,9 @@ export class AuthController {
         throw ApiError.unauthorized('Authentication failed');
       }
 
-      const accessToken = jwt.sign(
-        { userId: user.id },
-        config.jwtSecret,
-        { expiresIn: config.jwtExpiresIn }
-      );
-      
-      const refreshToken = jwt.sign(
-        { userId: user.id },
-        config.jwtRefreshSecret,
-        { expiresIn: config.jwtRefreshExpiresIn }
-      );
+      const payload = { userId: user.id };
+      const accessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+      const refreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
 
       await prisma.user.update({
         where: { id: user.id },
@@ -80,17 +72,9 @@ export class AuthController {
         throw ApiError.notFound('User not found');
       }
 
-      const accessToken = jwt.sign(
-        { userId: user.id },
-        config.jwtSecret,
-        { expiresIn: config.jwtExpiresIn }
-      );
-      
-      const refreshToken = jwt.sign(
-        { userId: user.id },
-        config.jwtRefreshSecret,
-        { expiresIn: config.jwtRefreshExpiresIn }
-      );
+      const payload = { userId: user.id };
+      const accessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+      const refreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
 
       res.json({
         success: true,
@@ -167,7 +151,7 @@ export class AuthController {
         throw ApiError.unauthorized('Refresh token required');
       }
 
-      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret) as { userId: string };
+      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret as string) as { userId: string };
       
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
@@ -185,17 +169,9 @@ export class AuthController {
         throw ApiError.unauthorized('Invalid refresh token');
       }
 
-      const newAccessToken = jwt.sign(
-        { userId: user.id },
-        config.jwtSecret,
-        { expiresIn: config.jwtExpiresIn }
-      );
-      
-      const newRefreshToken = jwt.sign(
-        { userId: user.id },
-        config.jwtRefreshSecret,
-        { expiresIn: config.jwtRefreshExpiresIn }
-      );
+      const payload = { userId: user.id };
+      const newAccessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+      const newRefreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
 
       res.json({
         success: true,

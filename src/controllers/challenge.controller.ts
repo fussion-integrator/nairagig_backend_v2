@@ -67,8 +67,13 @@ export class ChallengeController {
 
   async getChallenge(req: Request, res: Response, next: NextFunction) {
     try {
+      const challengeId = req.params.id;
+      if (!challengeId) {
+        throw ApiError.badRequest('Challenge ID is required');
+      }
+
       const challenge = await prisma.challenge.findUnique({
-        where: { id: req.params.id },
+        where: { id: challengeId },
         include: {
           creator: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
           sponsor: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
@@ -95,7 +100,7 @@ export class ChallengeController {
       }
 
       await prisma.challenge.update({
-        where: { id: req.params.id },
+        where: { id: challengeId },
         data: { viewCount: { increment: 1 } }
       });
 
@@ -131,7 +136,14 @@ export class ChallengeController {
   async registerForChallenge(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;
-      const { challengeId } = req.params;
+      const challengeId = req.params.challengeId;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+      if (!challengeId) {
+        throw ApiError.badRequest('Challenge ID is required');
+      }
 
       const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
       if (!challenge) throw ApiError.notFound('Challenge not found');
@@ -150,8 +162,8 @@ export class ChallengeController {
 
       const participant = await prisma.challengeParticipant.create({
         data: {
-          challengeId,
-          userId,
+          challengeId: challengeId,
+          userId: userId,
           status: 'REGISTERED'
         },
         include: {
@@ -173,8 +185,15 @@ export class ChallengeController {
   async submitSolution(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;
-      const { challengeId } = req.params;
+      const challengeId = req.params.challengeId;
       const { title, description, submissionUrl, repositoryUrl, demoUrl } = req.body;
+      
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+      if (!challengeId) {
+        throw ApiError.badRequest('Challenge ID is required');
+      }
 
       const participant = await prisma.challengeParticipant.findUnique({
         where: { challengeId_userId: { challengeId, userId } }
@@ -186,7 +205,7 @@ export class ChallengeController {
 
       const submission = await prisma.challengeSubmission.create({
         data: {
-          challengeId,
+          challengeId: challengeId,
           participantId: participant.id,
           title,
           description,
@@ -210,7 +229,11 @@ export class ChallengeController {
 
   async getLeaderboard(req: Request, res: Response, next: NextFunction) {
     try {
-      const { challengeId } = req.params;
+      const challengeId = req.params.challengeId;
+      
+      if (!challengeId) {
+        throw ApiError.badRequest('Challenge ID is required');
+      }
 
       const submissions = await prisma.challengeSubmission.findMany({
         where: { challengeId },

@@ -35,9 +35,9 @@ export class SponsorshipApplicationController {
       });
 
       // Initialize payment if tier has a price
-      if (tier.price > 0) {
+      if (Number(tier.price) > 0) {
         const reference = paystackService.generateReference();
-        const amountInKobo = paystackService.convertToKobo(tier.price);
+        const amountInKobo = paystackService.convertToKobo(Number(tier.price));
 
         const paystackResponse = await paystackService.initializeTransaction({
           email,
