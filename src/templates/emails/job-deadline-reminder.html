@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Deadline Reminder - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #f59e0b; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .reminder-card { background: #fef3c7; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #f59e0b; }
+        .project-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .countdown { background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 20px 0; text-align: center; }
+        .progress-bar { background: #e5e7eb; height: 12px; border-radius: 6px; margin: 15px 0; }
+        .progress-fill { background: #f59e0b; height: 100%; border-radius: 6px; }
+        .milestone-list { background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .urgent { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #fef3c7; margin-top: 10px;">⏰ Deadline Reminder</p>
+        </div>
+        
+        <div class="content">
+            <div class="reminder-card">
+                <h2 style="color: #d97706; margin-bottom: 15px;">⚠️ Project Deadline Approaching</h2>
+                <p style="color: #d97706; font-size: 16px;">
+                    This is a friendly reminder that your project deadline is coming up soon.
+                </p>
+            </div>
+            
+            <p style="margin-bottom: 20px;">Hi {{recipientName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                We wanted to remind you that the deadline for your project is approaching. 
+                Here are the important details to keep you on track.
+            </p>
+            
+            <div class="countdown">
+                <h3 style="color: #dc2626; margin-bottom: 15px;">🚨 Time Remaining</h3>
+                <div style="font-size: 32px; font-weight: bold; color: #dc2626; margin-bottom: 10px;">
+                    {{timeRemaining}}
+                </div>
+                <p style="color: #dc2626;">Until deadline: {{deadlineDate}}</p>
+            </div>
+            
+            <div class="project-info">
+                <h3 style="color: #374151; margin-bottom: 20px;">📋 Project Details</h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600; width: 30%;">Project:</td>
+                        <td style="padding: 10px 0;">{{projectTitle}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Client:</td>
+                        <td style="padding: 10px 0;">{{clientName}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Freelancer:</td>
+                        <td style="padding: 10px 0;">{{freelancerName}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Start Date:</td>
+                        <td style="padding: 10px 0;">{{startDate}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Deadline:</td>
+                        <td style="padding: 10px 0; color: #dc2626; font-weight: bold;">{{deadlineDate}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 600;">Progress:</td>
+                        <td style="padding: 10px 0;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{progressPercentage}}%;"></div>
+                            </div>
+                            <span style="color: #f59e0b; font-weight: bold;">{{progressPercentage}}% Complete</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            {{#if milestones}}
+            <div class="milestone-list">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">🎯 Remaining Milestones</h3>
+                {{#each milestones}}
+                <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 6px;">
+                    <span style="margin-right: 10px; font-size: 18px;">{{#if completed}}✅{{else}}⏳{{/if}}</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #374151;">{{title}}</div>
+                        <div style="color: #6b7280; font-size: 14px;">Due: {{dueDate}}</div>
+                    </div>
+                    <div style="color: {{#if overdue}}#dc2626{{else}}#f59e0b{{/if}}; font-weight: bold;">
+                        {{status}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            
+            {{#if isUrgent}}
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 25px 0;">
+                <h4 style="color: #dc2626; margin-bottom: 10px;">🚨 Urgent Action Required</h4>
+                <p style="color: #dc2626; margin-bottom: 15px;">
+                    Your project deadline is in <strong>{{urgentTimeframe}}</strong>. 
+                    Immediate action is needed to complete the project on time.
+                </p>
+                <ul style="color: #dc2626; margin-left: 20px; line-height: 1.8;">
+                    <li>Review all pending deliverables</li>
+                    <li>Communicate with your {{#if isFreelancer}}client{{else}}freelancer{{/if}} immediately</li>
+                    <li>Consider requesting a deadline extension if needed</li>
+                    <li>Prioritize critical project components</li>
+                </ul>
+            </div>
+            {{/if}}
+            
+            {{#if isFreelancer}}
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 25px 0;">
+                <h4 style="color: #16a34a; margin-bottom: 10px;">✅ Freelancer Action Items</h4>
+                <ul style="color: #16a34a; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Submit deliverables</strong> as soon as they're ready</li>
+                    <li><strong>Update project progress</strong> regularly</li>
+                    <li><strong>Communicate proactively</strong> about any delays</li>
+                    <li><strong>Request feedback</strong> on completed milestones</li>
+                    <li><strong>Prepare final submission</strong> well before deadline</li>
+                </ul>
+            </div>
+            {{/if}}
+            
+            {{#if isClient}}
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                <h4 style="color: #1d4ed8; margin-bottom: 10px;">👤 Client Action Items</h4>
+                <ul style="color: #1d4ed8; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Review submitted work</strong> promptly</li>
+                    <li><strong>Provide clear feedback</strong> on deliverables</li>
+                    <li><strong>Approve milestones</strong> quickly to keep project moving</li>
+                    <li><strong>Be available</strong> for questions and clarifications</li>
+                    <li><strong>Prepare for final review</strong> and acceptance</li>
+                </ul>
+            </div>
+            {{/if}}
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="{{projectUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                    View Project
+                </a>
+                <a href="{{messageUrl}}" class="btn" style="background: #3b82f6; margin-left: 10px;">
+                    Send Message
+                </a>
+            </div>
+            
+            {{#if extensionAvailable}}
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">📅 Need More Time?</h4>
+                <p style="color: #92400e; margin-bottom: 15px;">
+                    If you need to extend the deadline, communicate with your 
+                    {{#if isFreelancer}}client{{else}}freelancer{{/if}} as soon as possible. 
+                    Transparency and early communication help maintain trust.
+                </p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{requestExtensionUrl}}" class="btn" style="background: #f59e0b;">Request Extension</a>
+                </div>
+            </div>
+            {{/if}}
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 25px 0;">
+                <h4 style="color: #0c4a6e; margin-bottom: 10px;">💡 Success Tips</h4>
+                <ul style="color: #0369a1; margin-left: 20px; line-height: 1.8;">
+                    <li>Break remaining work into smaller, manageable tasks</li>
+                    <li>Set daily goals to stay on track</li>
+                    <li>Communicate progress updates regularly</li>
+                    <li>Ask for help or clarification when needed</li>
+                    <li>Plan for quality review time before submission</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                Remember, meeting deadlines builds trust and leads to better reviews and more opportunities. 
+                You've got this!
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Best of luck with your project completion!<br>
+                <strong>The NairaGig Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/help/deadlines" style="color: #6b7280;">Deadline Help</a> | 
+                <a href="{{websiteUrl}}/projects" style="color: #6b7280;">My Projects</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

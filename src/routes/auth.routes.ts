@@ -10,6 +10,9 @@ const authController = new AuthController();
 // Current user endpoint
 router.get('/me', authenticate, authController.getCurrentUser.bind(authController));
 
+// Token verification (should handle unauthenticated gracefully)
+router.get('/verify', authController.verifyToken.bind(authController));
+
 // Token refresh
 router.post('/refresh', authController.refreshToken.bind(authController));
 
@@ -25,5 +28,9 @@ router.get('/apple/callback', passport.authenticate('apple', { failureRedirect: 
 
 // JWT Token endpoint for OAuth users
 router.post('/oauth/token', authController.generateOAuthToken.bind(authController));
+
+// Token management endpoints
+router.post('/set-tokens', authController.setTokens.bind(authController));
+router.post('/clear-tokens', authController.clearTokens.bind(authController));
 
 export { router as authRoutes };

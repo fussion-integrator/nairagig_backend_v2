@@ -1,0 +1,18 @@
+// Add to your existing schema.prisma file
+
+model SearchQuery {
+  id        String   @id @default(cuid())
+  query     String
+  userId    String?
+  type      String?  // 'gigs', 'jobs', 'challenges', etc.
+  results   Int      @default(0) // number of results returned
+  clicked   Boolean  @default(false) // if user clicked on any result
+  createdAt DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([query])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("search_queries")
+}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Application Received - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .application-card { background: #eff6ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #3b82f6; }
+        .freelancer-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .stat-item { background: white; padding: 15px; border-radius: 6px; text-align: center; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #dbeafe; margin-top: 10px;">📩 New Application Alert</p>
+        </div>
+        
+        <div class="content">
+            <h1 style="color: #1f2937; margin-bottom: 20px;">Great News, {{clientName}}!</h1>
+            
+            <p style="margin-bottom: 25px;">
+                You've received a new application for your job posting. A talented freelancer is interested in working with you!
+            </p>
+            
+            <div class="application-card">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">📋 Job Details</h3>
+                <h2 style="color: #374151; margin-bottom: 15px; font-size: 20px;">{{jobTitle}}</h2>
+                <p style="color: #6b7280; margin-bottom: 15px;">{{jobCategory}} • Posted {{jobPostedDate}}</p>
+                <p style="color: #6b7280;">Budget: <strong style="color: #1d4ed8;">{{jobBudget}}</strong></p>
+            </div>
+            
+            <div class="freelancer-info">
+                <h3 style="color: #374151; margin-bottom: 20px;">👤 Applicant Information</h3>
+                
+                <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <div style="width: 60px; height: 60px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                        <span style="color: white; font-weight: bold; font-size: 18px;">{{freelancerInitials}}</span>
+                    </div>
+                    <div>
+                        <h4 style="color: #374151; margin-bottom: 5px;">{{freelancerName}}</h4>
+                        <p style="color: #6b7280;">{{freelancerTitle}}</p>
+                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                            <span style="color: #f59e0b;">⭐</span>
+                            <span style="color: #374151; margin-left: 5px;">{{freelancerRating}} ({{reviewCount}} reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div style="color: #3b82f6; font-weight: bold; font-size: 18px;">{{completedJobs}}</div>
+                        <div class="text-muted">Jobs Completed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div style="color: #3b82f6; font-weight: bold; font-size: 18px;">{{successRate}}%</div>
+                        <div class="text-muted">Success Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div style="color: #3b82f6; font-weight: bold; font-size: 18px;">{{responseTime}}</div>
+                        <div class="text-muted">Response Time</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 25px 0;">
+                <h4 style="color: #16a34a; margin-bottom: 10px;">💰 Proposed Terms</h4>
+                <p style="color: #16a34a; margin-bottom: 10px;">
+                    <strong>Budget:</strong> {{proposedBudget}}<br>
+                    <strong>Timeline:</strong> {{proposedTimeline}}<br>
+                    <strong>Applied:</strong> {{applicationDate}}
+                </p>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">📝 Cover Letter Preview</h4>
+                <p style="color: #92400e; font-style: italic;">
+                    "{{coverLetterPreview}}..."
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="{{applicationUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                    Review Application
+                </a>
+                <a href="{{freelancerProfileUrl}}" class="btn" style="background: #6b7280; margin-left: 10px;">
+                    View Profile
+                </a>
+            </div>
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 25px 0;">
+                <h4 style="color: #0c4a6e; margin-bottom: 10px;">💡 Quick Tips</h4>
+                <ul style="color: #0369a1; margin-left: 20px; line-height: 1.8;">
+                    <li>Review the freelancer's portfolio and past work</li>
+                    <li>Check their ratings and client feedback</li>
+                    <li>Ask clarifying questions if needed</li>
+                    <li>Respond promptly to maintain engagement</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                You currently have <strong>{{totalApplications}} applications</strong> for this job. 
+                Review all applications in your <a href="{{dashboardUrl}}" style="color: #3b82f6;">dashboard</a>.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/unsubscribe" style="color: #6b7280;">Unsubscribe</a> | 
+                <a href="{{websiteUrl}}/settings" style="color: #6b7280;">Manage Preferences</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

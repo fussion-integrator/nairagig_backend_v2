@@ -3,21 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '@/config/database';
 import { config } from '@/config/config';
 import { ApiError } from '@/utils/ApiError';
-
-interface AuthenticatedUser {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-  }
-}
+import { AuthenticatedUser } from '@/types/auth';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -53,7 +39,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       throw ApiError.unauthorized('Account is not active');
     }
 
-    req.user = user;
+    req.user = user as AuthenticatedUser;
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -105,7 +91,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     });
 
     if (user && user.status === 'ACTIVE') {
-      req.user = user;
+      req.user = user as AuthenticatedUser;
     }
 
     next();

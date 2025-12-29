@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Failed - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .failure-card { background: #fff5f5; border-left: 4px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .payment-details { background: #fff; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .error-info { background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .solutions { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .secondary-button { display: inline-block; background: #6c757d; color: white; padding: 10px 25px; text-decoration: none; border-radius: 20px; margin: 10px 5px; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .warning-icon { font-size: 48px; color: #dc3545; text-align: center; margin: 20px 0; }
+        .urgent-notice { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Payment Failed</h1>
+            <p>We couldn't process your payment</p>
+        </div>
+        
+        <div class="content">
+            <div class="warning-icon">⚠️</div>
+            
+            <p>Hi {{recipientName}},</p>
+            
+            <p>We're sorry to inform you that your payment for project <strong>{{projectTitle}}</strong> could not be processed.</p>
+            
+            <div class="failure-card">
+                <h3>❌ Payment Failed</h3>
+                <p><strong>Project:</strong> {{projectTitle}}</p>
+                <p><strong>{{#if milestoneTitle}}Milestone:{{else}}Payment Type:{{/if}}</strong> {{#if milestoneTitle}}{{milestoneTitle}}{{else}}{{paymentType}}{{/if}}</p>
+                <p><strong>Amount:</strong> ₦{{paymentAmount}}</p>
+                <p><strong>Attempt Date:</strong> {{attemptDate}}</p>
+                <p><strong>Status:</strong> <span style="color: #dc3545; font-weight: bold;">Failed</span></p>
+            </div>
+            
+            <div class="error-info">
+                <h4>🔍 Failure Reason</h4>
+                <p><strong>{{failureReason}}</strong></p>
+                {{#if failureDetails}}
+                <p><small>{{failureDetails}}</small></p>
+                {{/if}}
+            </div>
+            
+            <div class="payment-details">
+                <h3>💳 Payment Method Used</h3>
+                <p><strong>Method:</strong> {{paymentMethod}}</p>
+                {{#if cardDetails}}
+                <p><strong>Card:</strong> {{cardDetails}}</p>
+                {{/if}}
+                {{#if bankDetails}}
+                <p><strong>Bank:</strong> {{bankDetails}}</p>
+                {{/if}}
+                <p><strong>Transaction ID:</strong> {{transactionId}}</p>
+            </div>
+            
+            <div class="solutions">
+                <h3>🛠️ How to Fix This</h3>
+                <p>Here are some common solutions based on the failure reason:</p>
+                
+                {{#if isInsufficientFunds}}
+                <ul>
+                    <li>Check your account balance and ensure sufficient funds</li>
+                    <li>Try a different payment method</li>
+                    <li>Contact your bank to verify account status</li>
+                </ul>
+                {{/if}}
+                
+                {{#if isCardDeclined}}
+                <ul>
+                    <li>Verify your card details are correct</li>
+                    <li>Check if your card is expired or blocked</li>
+                    <li>Contact your bank to authorize the transaction</li>
+                    <li>Try a different card or payment method</li>
+                </ul>
+                {{/if}}
+                
+                {{#if isNetworkError}}
+                <ul>
+                    <li>Check your internet connection</li>
+                    <li>Try again in a few minutes</li>
+                    <li>Clear your browser cache and cookies</li>
+                    <li>Use a different browser or device</li>
+                </ul>
+                {{/if}}
+                
+                {{#if isGenericError}}
+                <ul>
+                    <li>Verify all payment details are correct</li>
+                    <li>Try a different payment method</li>
+                    <li>Contact your bank or card provider</li>
+                    <li>Reach out to our support team for assistance</li>
+                </ul>
+                {{/if}}
+            </div>
+            
+            {{#if projectImpact}}
+            <div class="urgent-notice">
+                <h4>⏰ Project Impact</h4>
+                <p>{{projectImpact}}</p>
+                {{#if deadlineWarning}}
+                <p><strong>Important:</strong> {{deadlineWarning}}</p>
+                {{/if}}
+            </div>
+            {{/if}}
+            
+            <h3>🚀 Next Steps</h3>
+            <ol>
+                <li><strong>Review the failure reason</strong> and check the suggested solutions</li>
+                <li><strong>Update your payment method</strong> if necessary</li>
+                <li><strong>Retry the payment</strong> once the issue is resolved</li>
+                <li><strong>Contact support</strong> if you need additional help</li>
+            </ol>
+            
+            <div style="text-align: center;">
+                <a href="{{retryPaymentUrl}}" class="cta-button">Retry Payment</a>
+                <br>
+                <a href="{{paymentMethodsUrl}}" class="secondary-button">Update Payment Method</a>
+                <a href="{{supportUrl}}" class="secondary-button">Contact Support</a>
+            </div>
+            
+            <p><strong>Need immediate help?</strong> Our support team is available 24/7 to assist you with payment issues. Please include the transaction ID <strong>{{transactionId}}</strong> when contacting us.</p>
+            
+            <p>We apologize for any inconvenience and appreciate your patience.</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Building Nigeria's digital economy, one gig at a time.</p>
+            <p>Support: support@nairagig.com | Phone: +234-XXX-XXXX</p>
+        </div>
+    </div>
+</body>
+</html>

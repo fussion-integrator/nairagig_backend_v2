@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Started - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .project-card { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .milestone-list { background: #fff; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .milestone-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .milestone-item:last-child { border-bottom: none; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .success-icon { font-size: 48px; color: #28a745; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Project Started!</h1>
+            <p>Your project is now officially underway</p>
+        </div>
+        
+        <div class="content">
+            <div class="success-icon">✅</div>
+            
+            <p>Hi {{recipientName}},</p>
+            
+            <p>Great news! Your project <strong>{{projectTitle}}</strong> has officially started and work is now underway.</p>
+            
+            <div class="project-card">
+                <h3>📋 Project Details</h3>
+                <p><strong>Project:</strong> {{projectTitle}}</p>
+                <p><strong>{{#if isClient}}Freelancer{{else}}Client{{/if}}:</strong> {{partnerName}}</p>
+                <p><strong>Start Date:</strong> {{startDate}}</p>
+                <p><strong>Expected Completion:</strong> {{expectedCompletion}}</p>
+                <p><strong>Total Budget:</strong> ₦{{totalBudget}}</p>
+            </div>
+            
+            {{#if milestones}}
+            <div class="milestone-list">
+                <h3>🎯 Project Milestones</h3>
+                {{#each milestones}}
+                <div class="milestone-item">
+                    <strong>{{title}}</strong> - ₦{{amount}}
+                    <br><small>Due: {{dueDate}}</small>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            
+            {{#if isClient}}
+            <h3>👨‍💼 What happens next?</h3>
+            <ul>
+                <li>Your freelancer will begin working on the project</li>
+                <li>You'll receive regular updates on progress</li>
+                <li>Milestone payments will be processed automatically upon approval</li>
+                <li>You can communicate directly through the project workspace</li>
+            </ul>
+            {{else}}
+            <h3>👨‍💻 What happens next?</h3>
+            <ul>
+                <li>Start working on the project deliverables</li>
+                <li>Submit milestones for client review and approval</li>
+                <li>Communicate regularly with your client</li>
+                <li>Get paid as milestones are approved</li>
+            </ul>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{projectUrl}}" class="cta-button">View Project Workspace</a>
+            </div>
+            
+            <p>Need help? Our support team is here to assist you throughout your project journey.</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Building Nigeria's digital economy, one gig at a time.</p>
+        </div>
+    </div>
+</body>
+</html>

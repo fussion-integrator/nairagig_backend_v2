@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Cancellation Notice - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .cancellation-card { background: #fef2f2; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #dc2626; }
+        .job-details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .refund-info { background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 20px 0; }
+        .next-steps { background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #fecaca; margin-top: 10px;">❌ Job Cancellation Notice</p>
+        </div>
+        
+        <div class="content">
+            <div class="cancellation-card">
+                <h2 style="color: #dc2626; margin-bottom: 15px;">🚫 Job Cancelled</h2>
+                <p style="color: #dc2626; font-size: 16px;">
+                    We regret to inform you that the following job has been cancelled.
+                </p>
+            </div>
+            
+            <p style="margin-bottom: 20px;">Dear {{recipientName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                We're writing to notify you that a job {{#if isClient}}you posted{{else}}you applied to{{/if}} 
+                has been cancelled. We understand this may be disappointing and want to provide you with all the details.
+            </p>
+            
+            <div class="job-details">
+                <h3 style="color: #374151; margin-bottom: 15px;">📋 Cancelled Job Details</h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600; width: 30%;">Job Title:</td>
+                        <td style="padding: 10px 0;">{{jobTitle}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Category:</td>
+                        <td style="padding: 10px 0;">{{jobCategory}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Budget:</td>
+                        <td style="padding: 10px 0;">{{jobBudget}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Posted Date:</td>
+                        <td style="padding: 10px 0;">{{postedDate}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Cancelled Date:</td>
+                        <td style="padding: 10px 0;">{{cancellationDate}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 600;">Reason:</td>
+                        <td style="padding: 10px 0; color: #dc2626;">{{cancellationReason}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            {{#if cancellationDetails}}
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">📝 Additional Details</h4>
+                <p style="color: #92400e; font-style: italic;">"{{cancellationDetails}}"</p>
+            </div>
+            {{/if}}
+            
+            {{#if hasRefund}}
+            <div class="refund-info">
+                <h3 style="color: #16a34a; margin-bottom: 15px;">💰 Refund Information</h3>
+                <p style="color: #16a34a; margin-bottom: 15px;">
+                    {{#if isClient}}
+                    Any payments made for this job will be refunded to your account within 3-5 business days.
+                    {{else}}
+                    If you had any milestone payments, they will be refunded to the client automatically.
+                    {{/if}}
+                </p>
+                <ul style="color: #16a34a; margin-left: 20px; line-height: 1.8;">
+                    <li>Refund Amount: <strong>{{refundAmount}}</strong></li>
+                    <li>Processing Time: {{refundProcessingTime}}</li>
+                    <li>Refund Method: {{refundMethod}}</li>
+                    <li>Reference ID: {{refundReferenceId}}</li>
+                </ul>
+            </div>
+            {{/if}}
+            
+            {{#if isClient}}
+            <div class="next-steps">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">🔄 What You Can Do Next</h3>
+                <ul style="color: #1d4ed8; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Repost the job</strong> with updated requirements if needed</li>
+                    <li><strong>Browse freelancers</strong> and invite them directly to apply</li>
+                    <li><strong>Adjust your budget or timeline</strong> to attract more applicants</li>
+                    <li><strong>Contact support</strong> if you need help with your job posting</li>
+                </ul>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="{{repostJobUrl}}" class="btn" style="background: #3b82f6;">Repost Job</a>
+                    <a href="{{browseFreelancersUrl}}" class="btn" style="background: #6b7280; margin-left: 10px;">Browse Freelancers</a>
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if isFreelancer}}
+            <div class="next-steps">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">🔍 Find Your Next Opportunity</h3>
+                <p style="color: #1d4ed8; margin-bottom: 15px;">
+                    Don't let this setback discourage you. There are plenty of other great opportunities waiting!
+                </p>
+                <ul style="color: #1d4ed8; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Browse similar jobs</strong> in {{jobCategory}}</li>
+                    <li><strong>Update your profile</strong> to attract more clients</li>
+                    <li><strong>Join challenges</strong> to showcase your skills</li>
+                    <li><strong>Build your portfolio</strong> with personal projects</li>
+                </ul>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="{{browseJobsUrl}}" class="btn" style="background: #3b82f6;">Browse Jobs</a>
+                    <a href="{{challengesUrl}}" class="btn" style="background: #6b7280; margin-left: 10px;">View Challenges</a>
+                </div>
+            </div>
+            {{/if}}
+            
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">💡 Prevention Tips</h4>
+                <p style="color: #92400e; margin-bottom: 10px;">To reduce the chance of future cancellations:</p>
+                <ul style="color: #92400e; margin-left: 20px; line-height: 1.8;">
+                    {{#if isClient}}
+                    <li>Provide detailed project requirements upfront</li>
+                    <li>Set realistic budgets and timelines</li>
+                    <li>Communicate clearly with applicants</li>
+                    <li>Review freelancer profiles and portfolios carefully</li>
+                    {{else}}
+                    <li>Read job descriptions thoroughly before applying</li>
+                    <li>Ask clarifying questions early in the process</li>
+                    <li>Provide realistic timelines and budgets</li>
+                    <li>Maintain professional communication</li>
+                    {{/if}}
+                </ul>
+            </div>
+            
+            {{#if supportAvailable}}
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 25px 0;">
+                <h4 style="color: #0c4a6e; margin-bottom: 10px;">🆘 Need Support?</h4>
+                <p style="color: #0369a1;">
+                    If you have questions about this cancellation or need assistance with your next steps, 
+                    our support team is here to help.
+                </p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{supportUrl}}" class="btn" style="background: #0ea5e9;">Contact Support</a>
+                </div>
+            </div>
+            {{/if}}
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                We apologize for any inconvenience this cancellation may have caused. 
+                We're committed to helping you succeed on our platform.
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Thank you for your understanding,<br>
+                <strong>The NairaGig Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/help/cancellations" style="color: #6b7280;">Cancellation Policy</a> | 
+                <a href="{{websiteUrl}}/support" style="color: #6b7280;">Get Support</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

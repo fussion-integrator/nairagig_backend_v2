@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
+import { emailService } from '@/services/email.service';
 
 export class UserController {
   async getUsers(req: Request, res: Response, next: NextFunction) {
@@ -42,8 +43,7 @@ export class UserController {
               select: {
                 clientProjects: true,
                 freelancerProjects: true,
-                messages: true,
-                receivedMessages: true
+                messages: true
               }
             }
           },
@@ -75,7 +75,7 @@ export class UserController {
         where: { id: req.params.id },
         include: {
           // profile: true,
-          wallet: true,
+          wallets: true,
           bankAccounts: true,
           paymentMethods: true,
           clientProjects: {
@@ -86,7 +86,7 @@ export class UserController {
             take: 5,
             orderBy: { createdAt: 'desc' }
           },
-          sentMessages: {
+          messages: {
             take: 5,
             orderBy: { createdAt: 'desc' }
           },
@@ -226,7 +226,7 @@ export class UserController {
           displayName: true,
           role: true,
           status: true,
-          tier: true,
+          // tier: true,
           createdAt: true
         }
       });
@@ -264,7 +264,7 @@ export class UserController {
           profileImageUrl: true,
           role: true,
           status: true,
-          tier: true,
+          // tier: true,
           updatedAt: true
         }
       });
@@ -293,7 +293,7 @@ export class UserController {
       await prisma.user.update({
         where: { id: req.params.id },
         data: { 
-          status: 'ACTIVE' as any,
+          status: 'DELETED' as any,
           deletedAt: new Date()
         }
       });
@@ -329,12 +329,13 @@ export class UserController {
         throw ApiError.notFound('User not found');
       }
 
+      const { reason, duration, reviewDate, violationDetails, policySection } = req.body;
+
       await prisma.user.update({
         where: { id: req.params.id },
         data: { 
           status: 'SUSPENDED',
-          suspendedAt: new Date(),
-          suspensionReason: req.body.reason
+          suspendedAt: new Date()
         }
       });
 
@@ -343,10 +344,28 @@ export class UserController {
           userId: req.params.id,
           type: 'SYSTEM',
           title: 'Account Suspended',
-          message: `Your account has been suspended. Reason: ${req.body.reason || 'Policy violation'}`,
+          message: `Your account has been suspended. Reason: ${reason || 'Policy violation'}`,
           priority: 'NORMAL'
         }
       });
+
+      // Send account suspension email
+      await emailService.sendAccountSuspension(
+        user.firstName,
+        user.email!,
+        {
+          reason: reason || 'Policy violation',
+          duration: duration || 'Indefinite',
+          referenceId: `SUSP-${Date.now()}`,
+          reviewDate: reviewDate || 'To be determined',
+          violationDetails: violationDetails || 'Details not provided',
+          policySection: policySection || 'General Terms of Service',
+          reviewPeriod: '30 days',
+          appealDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          appealUrl: `${process.env.FRONTEND_URL}/appeal`,
+          accountBalance: '0.00'
+        }
+      );
 
       logger.info(`User suspended: ${user.id} - ${user.email}`);
 
@@ -373,8 +392,7 @@ export class UserController {
         where: { id: req.params.id },
         data: { 
           status: 'ACTIVE',
-          suspendedAt: null,
-          suspensionReason: null
+          suspendedAt: null
         }
       });
 
@@ -538,7 +556,7 @@ export class UserController {
           },
           _count: true,
           _sum: {
-            budget: true
+            agreedBudget: true
           }
         }).catch(() => ({ _count: 0, _sum: { budget: 0 } })),
         prisma.wallet.findFirst({
@@ -561,7 +579,7 @@ export class UserController {
       }
 
       const stats = {
-        totalEarnings: walletStats?.totalEarned || 0,
+        totalEarnings: walletStats?.totalEarned ? Number(walletStats.totalEarned) : 0,
         completedProjects: projectStats._count || 0,
         averageRating: reviewStats._avg.overallRating || 0,
         totalReviews: reviewStats._count || 0,
@@ -604,6 +622,12 @@ export class UserController {
         socialLinks
       } = req.body;
 
+      // Get current user data for comparison
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true }
+      });
+
       // Check if phone number is already taken by another user
       if (phoneNumber && phoneNumber.trim()) {
         const existingUser = await prisma.user.findFirst({
@@ -637,6 +661,18 @@ export class UserController {
           yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience.toString()) : null
         }
       });
+
+      // Check profile completion and send activation email if needed
+      const profileCompletion = this.calculateProfileCompletion(updatedUser, skills, portfolios);
+      if (profileCompletion >= 80 && profileCompletion < 100) {
+        await emailService.sendAccountActivation(
+          updatedUser.firstName,
+          updatedUser.email!,
+          profileCompletion,
+          `${process.env.FRONTEND_URL}/profile/complete`,
+          Math.max(0, 30 - Math.floor((Date.now() - new Date(updatedUser.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+        );
+      }
 
       // Update skills if provided
       if (skills && Array.isArray(skills)) {
@@ -735,6 +771,20 @@ export class UserController {
       logger.error('Profile update error:', error);
       next(error);
     }
+  }
+
+  private calculateProfileCompletion(user: any, skills?: any[], portfolios?: any[]): number {
+    let completion = 0;
+    const fields = [
+      user.firstName, user.lastName, user.email, user.bio, user.title,
+      user.city, user.country, user.phoneNumber
+    ];
+    
+    completion += fields.filter(field => field && field.trim()).length * 10;
+    if (skills && skills.length > 0) completion += 10;
+    if (portfolios && portfolios.length > 0) completion += 10;
+    
+    return Math.min(completion, 100);
   }
 
   async addPortfolioItem(req: Request, res: Response, next: NextFunction) {
@@ -966,12 +1016,8 @@ export class UserController {
       const { page = 1, limit = 20 } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
-      const activities = await prisma.userActivity.findMany({
-        where: { userId: req.params.id },
-        skip,
-        take: Number(limit),
-        orderBy: { createdAt: 'desc' }
-      });
+      // Return empty array for now since userActivity model doesn't exist
+      const activities: any[] = [];
 
       res.json({
         success: true,
@@ -1036,7 +1082,7 @@ export class UserController {
         const participations = user.challengeParticipants || [];
         const challengesParticipated = participations.length;
         const challengesWon = participations.filter(p => 
-          p.submissions.some(s => s.isWinner || s.totalScore >= 80)
+          p.submissions.some(s => s.isWinner || Number(s.totalScore) >= 80)
         ).length;
         const winRate = challengesParticipated > 0 ? (challengesWon / challengesParticipated) * 100 : 0;
 
@@ -1129,7 +1175,7 @@ export class UserController {
       const participations = user.challengeParticipants || [];
       const challengesParticipated = participations.length;
       const challengesWon = participations.filter(p => 
-        p.submissions.some(s => s.isWinner || s.totalScore >= 80)
+        p.submissions.some(s => s.isWinner || Number(s.totalScore) >= 80)
       ).length;
 
       res.json({

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Contact Form Submission - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .alert { background: #fef2f2; padding: 20px; border-left: 4px solid #dc2626; margin: 20px 0; border-radius: 4px; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .priority-high { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚨 NairaGig Admin</div>
+            <p style="color: #fecaca; margin-top: 10px;">New Contact Form Submission</p>
+        </div>
+        
+        <div class="content">
+            <div class="alert">
+                <h2 style="color: #dc2626; margin-bottom: 15px;">⚡ Action Required</h2>
+                <p>A new contact form submission has been received and requires your attention.</p>
+            </div>
+            
+            <div class="info-box">
+                <h3 style="color: #374151; margin-bottom: 20px;">Contact Details</h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600; width: 30%;">Name:</td>
+                        <td style="padding: 12px 0;">{{name}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Email:</td>
+                        <td style="padding: 12px 0;"><a href="mailto:{{email}}" style="color: #dc2626;">{{email}}</a></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Subject:</td>
+                        <td style="padding: 12px 0;">{{subject}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Reference ID:</td>
+                        <td style="padding: 12px 0;">#{{contactId}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; font-weight: 600;">Submitted:</td>
+                        <td style="padding: 12px 0;">{{currentDate}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="info-box">
+                <h3 style="color: #374151; margin-bottom: 15px;">Message Content</h3>
+                <div style="background: white; padding: 20px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    {{message}}
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="mailto:{{email}}?subject=Re: {{subject}}&body=Hi {{name}},%0D%0A%0D%0AThank you for contacting NairaGig..." class="btn">Reply to Customer</a>
+            </div>
+            
+            <div class="alert">
+                <p class="priority-high">⏰ Response Time Target: 24 hours</p>
+                <p style="margin-top: 10px; font-size: 14px;">
+                    Please ensure this inquiry is addressed promptly to maintain our customer service standards.
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                NairaGig Admin Panel | Internal Use Only<br>
+                This email contains customer information - handle with care
+            </p>
+        </div>
+    </div>
+</body>
+</html>

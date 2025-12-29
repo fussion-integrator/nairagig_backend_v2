@@ -12,28 +12,44 @@ export function setupSocketIO(io: Server) {
   // Authentication middleware
   io.use(async (socket: any, next) => {
     try {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+      const token = socket.handshake.auth.token || 
+                   socket.handshake.headers.authorization?.replace('Bearer ', '') ||
+                   socket.request.headers.cookie?.split(';')
+                     .find(c => c.trim().startsWith('access_token='))
+                     ?.split('=')[1];
       
-      if (!token) {
-        console.log('❌ No token provided');
+      const userId = socket.handshake.auth.userId;
+      
+      if (!userId && !token) {
+        console.log('❌ No authentication provided');
         return next(new Error('Authentication required'));
       }
 
-      const decoded = jwt.verify(token, config.jwtSecret) as any;
-      const userId = decoded.userId || decoded.id;
-      
-      if (!userId) {
-        console.log('❌ No userId in token');
-        return next(new Error('Invalid token format'));
+      let user;
+      if (userId) {
+        // Direct userId authentication (for cookie-based auth)
+        user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, role: true, firstName: true, lastName: true }
+        });
+      } else if (token) {
+        // Token-based authentication
+        const decoded = jwt.verify(token, config.jwtSecret) as any;
+        const tokenUserId = decoded.userId || decoded.id;
+        
+        if (!tokenUserId) {
+          console.log('❌ No userId in token');
+          return next(new Error('Invalid token format'));
+        }
+        
+        user = await prisma.user.findUnique({
+          where: { id: tokenUserId },
+          select: { id: true, role: true, firstName: true, lastName: true }
+        });
       }
-      
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, role: true, firstName: true, lastName: true }
-      });
 
       if (!user) {
-        console.log('❌ User not found:', userId);
+        console.log('❌ User not found');
         return next(new Error('User not found'));
       }
 

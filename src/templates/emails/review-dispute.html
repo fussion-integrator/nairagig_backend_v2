@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Dispute - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .dispute-card { background: #fff5f5; border-left: 4px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .review-details { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .process-info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .warning-icon { font-size: 48px; color: #dc3545; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚖️ Review Dispute</h1>
+            <p>A review has been disputed</p>
+        </div>
+        
+        <div class="content">
+            <div class="warning-icon">🚨</div>
+            
+            <p>Hi {{recipientName}},</p>
+            
+            {{#if isDisputer}}
+            <p>Your dispute for the review on project <strong>{{projectTitle}}</strong> has been submitted and is now under investigation.</p>
+            {{else}}
+            <p>A dispute has been filed regarding your review for project <strong>{{projectTitle}}</strong>.</p>
+            {{/if}}
+            
+            <div class="dispute-card">
+                <h3>⚖️ Dispute Details</h3>
+                <p><strong>Project:</strong> {{projectTitle}}</p>
+                <p><strong>Dispute Filed By:</strong> {{disputerName}}</p>
+                <p><strong>Dispute Date:</strong> {{disputeDate}}</p>
+                <p><strong>Dispute ID:</strong> {{disputeId}}</p>
+                <p><strong>Status:</strong> {{disputeStatus}}</p>
+            </div>
+            
+            <div class="review-details">
+                <h4>📝 Original Review</h4>
+                <p><strong>Reviewer:</strong> {{reviewerName}}</p>
+                <p><strong>Rating:</strong> {{originalRating}}/5</p>
+                <p><strong>Review Date:</strong> {{reviewDate}}</p>
+                {{#if reviewComment}}
+                <p><strong>Comment:</strong> "{{reviewComment}}"</p>
+                {{/if}}
+            </div>
+            
+            {{#if disputeReason}}
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>📋 Dispute Reason</h4>
+                <p>{{disputeReason}}</p>
+                {{#if disputeDetails}}
+                <p><strong>Additional Details:</strong> {{disputeDetails}}</p>
+                {{/if}}
+            </div>
+            {{/if}}
+            
+            <div class="process-info">
+                <h3>🔍 Investigation Process</h3>
+                <ol>
+                    <li><strong>Review Submission:</strong> Our team will review all evidence</li>
+                    <li><strong>Investigation:</strong> We'll examine the project history and communications</li>
+                    <li><strong>Decision:</strong> A fair resolution will be determined</li>
+                    <li><strong>Action:</strong> Appropriate action will be taken based on findings</li>
+                </ol>
+                <p><strong>Expected Resolution Time:</strong> {{resolutionTimeframe}}</p>
+            </div>
+            
+            {{#if isDisputer}}
+            <h3>📋 What happens next?</h3>
+            <ul>
+                <li>Our moderation team will investigate the dispute</li>
+                <li>You may be contacted for additional information</li>
+                <li>You'll be notified of the final decision</li>
+                <li>If upheld, appropriate action will be taken</li>
+            </ul>
+            {{else}}
+            <h3>📋 Your rights during this process:</h3>
+            <ul>
+                <li>You can provide additional context or evidence</li>
+                <li>The review remains visible during investigation</li>
+                <li>You'll be notified of the final decision</li>
+                <li>You can appeal the decision if needed</li>
+            </ul>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{disputeUrl}}" class="cta-button">View Dispute Details</a>
+            </div>
+            
+            <p><strong>Important:</strong> All disputes are handled fairly and impartially. We encourage honest, constructive reviews that help our community grow.</p>
+            
+            <p>If you have any questions about this process, please contact our support team.</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Support: support@nairagig.com</p>
+        </div>
+    </div>
+</body>
+</html>

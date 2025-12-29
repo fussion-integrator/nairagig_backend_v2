@@ -8,155 +8,160 @@ datasource db {
 }
 
 model SponsorshipApplication {
-  id          String                    @id @default(uuid())
+  id          String                       @id @default(uuid())
   userId      String
   tierId      String
   fullName    String
   email       String
   reason      String
   status      SponsorshipApplicationStatus @default(PENDING)
-  attachments Json                      @default("[]")
+  attachments Json                         @default("[]")
   voiceNote   String?
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  user        User                      @relation(fields: [userId], references: [id])
-  tier        SponsorshipTier           @relation(fields: [tierId], references: [id])
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+  tier        SponsorshipTier              @relation(fields: [tierId], references: [id])
+  user        User                         @relation(fields: [userId], references: [id])
 
   @@map("sponsorship_applications")
 }
 
 model SponsorshipTier {
-  id          String   @id @default(uuid())
-  name        String   @unique // "free", "bronze", "silver", "gold", "platinum"
-  displayName String   // "Free", "Bronze", "Silver", "Gold", "Platinum"
-  price       Decimal  @default(0)
-  currency    String   @default("NGN")
-  benefits    Json     @default("[]")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
+  id           String                   @id @default(uuid())
+  name         String                   @unique
+  displayName  String
+  price        Decimal                  @default(0)
+  currency     String                   @default("NGN")
+  benefits     Json                     @default("[]")
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
   applications SponsorshipApplication[]
+  users        User[]
 
   @@map("sponsorship_tiers")
 }
 
 model User {
-  id                    String                    @id @default(uuid())
-  email                 String                    @unique
-  username              String?                   @unique
-  firstName             String
-  lastName              String
-  phoneNumber           String?                   @unique
-  referralCode          String?                   @unique
-  bio                   String?
-  hourlyRate            Decimal?
-  role                  UserRole                  @default(FREELANCER)
-  status                UserStatus                @default(ACTIVE)
-  lastLoginAt           DateTime?
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  appleId               String?                   @unique
-  authProvider          AuthProvider              @default(LOCAL)
-  googleId              String?                   @unique
-  linkedinId            String?                   @unique
-  address               String?
-  availabilityStatus    String?                   @default("available")
-  city                  String?
-  country               String?
-  coverImageUrl         String?
-  dateOfBirth           DateTime?
-  deletedAt             DateTime?
-  displayName           String?
-  emailVerifiedAt       DateTime?
-  experiencePoints      Int                       @default(0)
-  gender                String?
-  kycVerifiedAt         DateTime?
-  lastActiveAt          DateTime?
-  level                 Int                       @default(1)
-  loginCount            Int                       @default(0)
-  phoneVerifiedAt       DateTime?
-  portfolioUrl          String?
-  profileImageUrl       String?
-  reputationScore       Decimal?                  @default(0.00)
-  state                 String?
-  subscriptionExpiresAt DateTime?
-  subscriptionTier      String?                   @default("free") // "free", "bronze", "silver", "gold", "platinum"
-  sponsorshipTier       SponsorshipTier?          @relation(fields: [subscriptionTier], references: [name])
-  timezone              String?
-  title                 String?
-  twoFactorEnabled      Boolean                   @default(false)
-  twoFactorSecret       String?
-  websiteUrl            String?
-  yearsOfExperience     Int?
-  specialty             String?
-  // Settings fields
-  emailNotifications    Boolean                   @default(true)
-  smsNotifications      Boolean                   @default(false)
-  marketingEmails       Boolean                   @default(true)
-  twoFactorAuth         Boolean                   @default(false)
-  loginAlerts           Boolean                   @default(true)
-  sessionTimeout        Boolean                   @default(true)
-  profileVisibility     String                    @default("public")
-  language              String                    @default("en")
-  currency              String                    @default("NGN")
-  dateFormat            String                    @default("DD/MM/YYYY")
-  timeFormat            String                    @default("24h")
-  theme                 String                    @default("light")
-  compactMode           Boolean                   @default(false)
-  showOnlineStatus      Boolean                   @default(true)
-  allowSearchEngineIndexing Boolean               @default(true)
-  challengeParticipants ChallengeParticipant[]
-  challenges            Challenge[]               @relation("CreatedChallenges")
-  sponsoredChallenges   Challenge[]               @relation("SponsoredChallenges")
-  conversations         ConversationParticipant[]
-  files                 File[]                    @relation("UploadedFiles")
-  applications          JobApplication[]
-  awardedJobs           Job[]                     @relation("AwardedJobs")
-  jobs                  Job[]                     @relation("ClientJobs")
-  jobQuestions          JobQuestion[]             @relation("FreelancerQuestions")
-  messageReads          MessageRead[]             @relation("MessageReads")
-  messageReactions      MessageReaction[]         @relation("MessageReactions")
-  messageMentions       MessageMention[]          @relation("MessageMentions")
-  messageDeliveries     MessageDelivery[]         @relation("MessageDeliveries")
-  messageModerations    MessageModeration[]       @relation("MessageModerations")
-  messages              Message[]
-  notifications         Notification[]
-  paymentMethods        PaymentMethod[]
-  portfolios            Portfolio[]
-  projectMembers        ProjectMember[]
-  milestones            ProjectMilestone[]
-  progressUpdates       ProjectProgressUpdate[] @relation("ProgressUpdates")
-  progressConfirmations ProjectProgressUpdate[] @relation("ProgressConfirmations")
-  clientProjects        Project[]                 @relation("ClientProjects")
-  freelancerProjects    Project[]                 @relation("FreelancerProjects")
-  reviewsReceived       Review[]                  @relation("ReviewsOfUser")
-  reviews               Review[]                  @relation("ReviewsByUser")
-  transactions          Transaction[]
-  achievements          UserAchievement[]
-  analytics             UserAnalytics[]
-  skills                UserSkill[]               @relation("UserSkills")
-  skillVerifications    UserSkill[]               @relation("SkillVerifications")
-  socialProfiles        UserSocialProfile[]
-  wallets               Wallet[]
-  sponsorshipApplications SponsorshipApplication[]
-  sessions              UserSession[]
-  loginHistory          LoginHistory[]
-  bankAccounts          BankAccount[]
-  paymentCards          PaymentCard[]
-  rewards               Reward[]
-  rewardStats           UserRewardStats?
-  referrals             Referral[]             @relation("ReferrerReferrals")
-  referredBy            Referral[]             @relation("RefereeReferrals")
-  streaks               UserStreak[]
-  badges                UserBadge[]
-  leaderboardEntries    LeaderboardEntry[]
-  clientContracts       Contract[]             @relation("ClientContracts")
-  freelancerContracts   Contract[]             @relation("FreelancerContracts")
-  raisedDisputes        Dispute[]              @relation("RaisedDisputes")
-  disputesAgainst       Dispute[]              @relation("DisputesAgainst")
-  resolvedDisputes      Dispute[]              @relation("ResolvedDisputes")
-  disputeResponses      DisputeResponse[]
+  id                        String                    @id @default(uuid())
+  email                     String                    @unique
+  username                  String?                   @unique
+  firstName                 String
+  lastName                  String
+  phoneNumber               String?                   @unique
+  bio                       String?
+  hourlyRate                Decimal?
+  role                      UserRole                  @default(FREELANCER)
+  status                    UserStatus                @default(ACTIVE)
+  lastLoginAt               DateTime?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  appleId                   String?                   @unique
+  authProvider              AuthProvider              @default(LOCAL)
+  googleId                  String?                   @unique
+  linkedinId                String?                   @unique
+  address                   String?
+  availabilityStatus        String?                   @default("available")
+  city                      String?
+  country                   String?
+  coverImageUrl             String?
+  dateOfBirth               DateTime?
+  deletedAt                 DateTime?
+  displayName               String?
+  emailVerifiedAt           DateTime?
+  experiencePoints          Int                       @default(0)
+  gender                    String?
+  kycVerifiedAt             DateTime?
+  lastActiveAt              DateTime?
+  level                     Int                       @default(1)
+  loginCount                Int                       @default(0)
+  phoneVerifiedAt           DateTime?
+  portfolioUrl              String?
+  profileImageUrl           String?
+  reputationScore           Decimal?                  @default(0.00)
+  state                     String?
+  subscriptionExpiresAt     DateTime?
+  subscriptionTier          String?                   @default("free")
+  timezone                  String?
+  title                     String?
+  twoFactorEnabled          Boolean                   @default(false)
+  twoFactorSecret           String?
+  websiteUrl                String?
+  yearsOfExperience         Int?
+  allowSearchEngineIndexing Boolean                   @default(true)
+  compactMode               Boolean                   @default(false)
+  currency                  String                    @default("NGN")
+  dateFormat                String                    @default("DD/MM/YYYY")
+  emailNotifications        Boolean                   @default(true)
+  language                  String                    @default("en")
+  loginAlerts               Boolean                   @default(true)
+  marketingEmails           Boolean                   @default(true)
+  profileVisibility         String                    @default("public")
+  sessionTimeout            Boolean                   @default(true)
+  showOnlineStatus          Boolean                   @default(true)
+  smsNotifications          Boolean                   @default(false)
+  theme                     String                    @default("light")
+  timeFormat                String                    @default("24h")
+  twoFactorAuth             Boolean                   @default(false)
+  specialty                 String?
+  referralCode              String?                   @unique
+  isVerified                Boolean                   @default(false)
+  suspendedAt               DateTime?
+  bankAccounts              BankAccount[]
+  challengeParticipants     ChallengeParticipant[]
+  challenges                Challenge[]               @relation("CreatedChallenges")
+  sponsoredChallenges       Challenge[]               @relation("SponsoredChallenges")
+  clientContracts           Contract[]                @relation("ClientContracts")
+  freelancerContracts       Contract[]                @relation("FreelancerContracts")
+  conversations             ConversationParticipant[]
+  disputeResponses          DisputeResponse[]         @relation("DisputeResponses")
+  disputesAgainst           Dispute[]                 @relation("DisputesAgainst")
+  raisedDisputes            Dispute[]                 @relation("RaisedDisputes")
+  resolvedDisputes          Dispute[]                 @relation("ResolvedDisputes")
+  files                     File[]                    @relation("UploadedFiles")
+  applications              JobApplication[]
+  jobQuestions              JobQuestion[]             @relation("FreelancerQuestions")
+  awardedJobs               Job[]                     @relation("AwardedJobs")
+  jobs                      Job[]                     @relation("ClientJobs")
+  bookmarks                 JobBookmark[]
+  leaderboardEntries        LeaderboardEntry[]
+  loginHistory              LoginHistory[]
+  messageDeliveries         MessageDelivery[]         @relation("MessageDeliveries")
+  messageMentions           MessageMention[]          @relation("MessageMentions")
+  messageModerations        MessageModeration[]       @relation("MessageModerations")
+  messageReactions          MessageReaction[]         @relation("MessageReactions")
+  messageReads              MessageRead[]             @relation("MessageReads")
+  messages                  Message[]
+  notifications             Notification[]
+  paymentCards              PaymentCard[]
+  paymentMethods            PaymentMethod[]
+  portfolios                Portfolio[]
+  projectMembers            ProjectMember[]
+  milestones                ProjectMilestone[]
+  progressConfirmations     ProjectProgressUpdate[]   @relation("ProgressConfirmations")
+  progressUpdates           ProjectProgressUpdate[]   @relation("ProgressUpdates")
+  clientProjects            Project[]                 @relation("ClientProjects")
+  freelancerProjects        Project[]                 @relation("FreelancerProjects")
+  referredBy                Referral[]                @relation("RefereeReferrals")
+  referrals                 Referral[]                @relation("ReferrerReferrals")
+  reviewsReceived           Review[]                  @relation("ReviewsOfUser")
+  reviews                   Review[]                  @relation("ReviewsByUser")
+  rewards                   Reward[]
+  sponsorshipApplications   SponsorshipApplication[]
+  transactions              Transaction[]
+  achievements              UserAchievement[]
+  analytics                 UserAnalytics[]
+  badges                    UserBadge[]
+  rewardStats               UserRewardStats?
+  sessions                  UserSession[]
+  skills                    UserSkill[]               @relation("UserSkills")
+  skillVerifications        UserSkill[]               @relation("SkillVerifications")
+  socialProfiles            UserSocialProfile[]
+  streaks                   UserStreak[]
+  verificationReviews       UserVerification[]        @relation("VerificationReviews")
+  verification              UserVerification?
+  sponsorshipTier           SponsorshipTier?          @relation(fields: [subscriptionTier], references: [name])
+  wallets                   Wallet[]
+  twoFactorCodes            TwoFactorCode[]
 
   @@map("users")
 }
@@ -209,19 +214,19 @@ model BankAccount {
 }
 
 model PaymentCard {
-  id         String              @id @default(uuid())
-  userId     String
-  cardType   String              // visa, mastercard, verve
-  last4      String
+  id          String              @id @default(uuid())
+  userId      String
+  cardType    String
+  last4       String
   expiryMonth String
-  expiryYear String
-  cardToken  String?
-  isDefault  Boolean             @default(false)
-  isVerified Boolean             @default(false)
-  status     PaymentMethodStatus @default(ACTIVE)
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiryYear  String
+  cardToken   String?
+  isDefault   Boolean             @default(false)
+  isVerified  Boolean             @default(false)
+  status      PaymentMethodStatus @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payment_cards")
 }
@@ -279,8 +284,6 @@ model Job {
   experienceLevel     ExperienceLevel  @default(INTERMEDIATE)
   status              JobStatus        @default(DRAFT)
   isUrgent            Boolean          @default(false)
-  allowQuestions      Boolean          @default(true)
-  requireCoverLetter  Boolean          @default(true)
   clientId            String
   awardedTo           String?
   createdAt           DateTime         @default(now())
@@ -297,10 +300,6 @@ model Job {
   deadline            DateTime?
   deletedAt           DateTime?
   deliverables        String?
-  coreFeatures        Json             @default("[]")
-  timeline            Json             @default("[]")
-  referenceLinks      Json             @default("[]")
-  managedByNairagig   Boolean          @default(false)
   estimatedDuration   Int?
   images              String[]
   isFeatured          Boolean          @default(false)
@@ -312,16 +311,33 @@ model Job {
   viewCount           Int              @default(0)
   visibility          JobVisibility    @default(PUBLIC)
   attachments         Json             @default("[]")
+  allowQuestions      Boolean          @default(true)
+  requireCoverLetter  Boolean          @default(true)
+  coreFeatures        Json             @default("[]")
+  referenceLinks      Json             @default("[]")
+  timeline            Json             @default("[]")
+  managedByNairagig   Boolean          @default(false)
   applications        JobApplication[]
   questions           JobQuestion[]
   awardedFreelancer   User?            @relation("AwardedJobs", fields: [awardedTo], references: [id])
   category            Category?        @relation(fields: [categoryId], references: [id])
   client              User             @relation("ClientJobs", fields: [clientId], references: [id])
   project             Project?
-  contracts           Contract[]
-  disputes            Dispute[]
+  bookmarks           JobBookmark[]
 
   @@map("jobs")
+}
+
+model JobBookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@map("job_bookmarks")
 }
 
 model JobApplication {
@@ -348,55 +364,55 @@ model JobApplication {
 }
 
 model JobQuestion {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   jobId        String
   freelancerId String
   question     String
   answer       String?
-  isAnswered   Boolean  @default(false)
-  isPublic     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  isAnswered   Boolean   @default(false)
+  isPublic     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
   answeredAt   DateTime?
-  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  freelancer   User     @relation("FreelancerQuestions", fields: [freelancerId], references: [id], onDelete: Cascade)
+  freelancer   User      @relation("FreelancerQuestions", fields: [freelancerId], references: [id], onDelete: Cascade)
+  job          Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@map("job_questions")
 }
 
 model Project {
-  id                 String             @id @default(uuid())
+  id                 String                  @id @default(uuid())
   description        String?
-  status             ProjectStatus      @default(PLANNING)
+  status             ProjectStatus           @default(PLANNING)
   startDate          DateTime?
   endDate            DateTime?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
   agreedBudget       Decimal
   clientId           String
   completedAt        DateTime?
   contractTerms      String?
-  currency           String             @default("NGN")
-  deliverables       Json               @default("[]")
+  currency           String                  @default("NGN")
+  deliverables       Json                    @default("[]")
   estimatedHours     Int?
-  finalDeliverables  Json               @default("[]")
+  finalDeliverables  Json                    @default("[]")
   freelancerId       String
-  jobId              String?            @unique
-  paymentSchedule    PaymentSchedule    @default(MILESTONE)
-  progressPercentage Int                @default(0)
+  jobId              String?                 @unique
+  paymentSchedule    PaymentSchedule         @default(MILESTONE)
+  progressPercentage Int                     @default(0)
   requirements       String?
-  revisionLimit      Int                @default(3)
-  revisionsUsed      Int                @default(0)
+  revisionLimit      Int                     @default(3)
+  revisionsUsed      Int                     @default(0)
   title              String
+  contract           Contract?
   conversations      Conversation[]
+  disputes           Dispute[]
   members            ProjectMember[]
   milestones         ProjectMilestone[]
   progressUpdates    ProjectProgressUpdate[]
-  client             User               @relation("ClientProjects", fields: [clientId], references: [id])
-  freelancer         User               @relation("FreelancerProjects", fields: [freelancerId], references: [id])
-  job                Job?               @relation(fields: [jobId], references: [id])
+  client             User                    @relation("ClientProjects", fields: [clientId], references: [id])
+  freelancer         User                    @relation("FreelancerProjects", fields: [freelancerId], references: [id])
+  job                Job?                    @relation(fields: [jobId], references: [id])
   reviews            Review[]
-  contract           Contract?
-  disputes           Dispute[]
 
   @@map("projects")
 }
@@ -439,23 +455,23 @@ model ProjectMilestone {
 }
 
 model ProjectProgressUpdate {
-  id                String   @id @default(uuid())
-  projectId         String
-  updatedBy         String
-  oldProgress       Int
-  newProgress       Int
-  reason            String?
-  messageId         String?
-  status            ProgressUpdateStatus @default(PENDING)
-  confirmedAt       DateTime?
-  confirmedBy       String?
-  changeRequested   Boolean  @default(false)
-  changeReason      String?
-  createdAt         DateTime @default(now())
-  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  updater           User     @relation("ProgressUpdates", fields: [updatedBy], references: [id])
-  confirmer         User?    @relation("ProgressConfirmations", fields: [confirmedBy], references: [id])
-  message           Message? @relation(fields: [messageId], references: [id])
+  id              String               @id @default(uuid())
+  projectId       String
+  updatedBy       String
+  oldProgress     Int
+  newProgress     Int
+  reason          String?
+  messageId       String?
+  status          ProgressUpdateStatus @default(PENDING)
+  confirmedAt     DateTime?
+  confirmedBy     String?
+  changeRequested Boolean              @default(false)
+  changeReason    String?
+  createdAt       DateTime             @default(now())
+  confirmer       User?                @relation("ProgressConfirmations", fields: [confirmedBy], references: [id])
+  message         Message?             @relation(fields: [messageId], references: [id])
+  project         Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  updater         User                 @relation("ProgressUpdates", fields: [updatedBy], references: [id])
 
   @@map("project_progress_updates")
 }
@@ -548,19 +564,19 @@ model Conversation {
   status             ConversationStatus        @default(ACTIVE)
   lastMessageAt      DateTime?
   lastMessagePreview String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  autoArchiveAfter   Int?
+  customData         Json                      @default("{}")
   isArchived         Boolean                   @default(false)
   isPinned           Boolean                   @default(false)
   muteUntil          DateTime?
-  customData         Json                      @default("{}")
-  tags               String[]                  @default([])
   priority           ConversationPriority      @default(NORMAL)
-  autoArchiveAfter   Int?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  participants       ConversationParticipant[]
-  settings           ConversationSettings?
+  tags               String[]                  @default([])
   labels             ConversationLabel[]
+  participants       ConversationParticipant[]
   security           ConversationSecurity?
+  settings           ConversationSettings?
   challenge          Challenge?                @relation(fields: [challengeId], references: [id])
   project            Project?                  @relation(fields: [projectId], references: [id])
   messages           Message[]
@@ -612,16 +628,16 @@ model ConversationParticipant {
   id               String          @id @default(uuid())
   conversationId   String
   userId           String
-  role             ParticipantRole @default(MEMBER)
-  permissions      Json            @default("{}")
-  isActive         Boolean         @default(true)
-  mutedUntil       DateTime?
-  customTitle      String?
-  notifyOnMessage  Boolean         @default(true)
-  notifyOnMention  Boolean         @default(true)
-  notifyOnReaction Boolean         @default(false)
   joinedAt         DateTime        @default(now())
   lastReadAt       DateTime?
+  customTitle      String?
+  isActive         Boolean         @default(true)
+  mutedUntil       DateTime?
+  notifyOnMention  Boolean         @default(true)
+  notifyOnMessage  Boolean         @default(true)
+  notifyOnReaction Boolean         @default(false)
+  permissions      Json            @default("{}")
+  role             ParticipantRole @default(MEMBER)
   conversation     Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -630,37 +646,37 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String        @id @default(uuid())
-  content        String?
-  senderId       String
-  messageType    MessageType   @default(TEXT)
-  createdAt      DateTime      @default(now())
-  conversationId String
-  deletedAt      DateTime?
-  editedAt       DateTime?
-  isDeleted      Boolean       @default(false)
-  isEdited       Boolean       @default(false)
-  replyToId      String?
-  threadId       String?
-  threadCount    Int           @default(0)
-  attachments    Json          @default("[]")
-  isSystemMessage Boolean      @default(false)
-  systemData     Json?
-  actionType     String?
-  actionData     Json?
-  priority       MessagePriority @default(NORMAL)
-  reads          MessageRead[]
-  reactions      MessageReaction[]
-  mentions       MessageMention[]
-  deliveries     MessageDelivery[]
+  id              String                  @id @default(uuid())
+  content         String?
+  senderId        String
+  messageType     MessageType             @default(TEXT)
+  createdAt       DateTime                @default(now())
+  conversationId  String
+  deletedAt       DateTime?
+  editedAt        DateTime?
+  isDeleted       Boolean                 @default(false)
+  isEdited        Boolean                 @default(false)
+  replyToId       String?
+  threadCount     Int                     @default(0)
+  attachments     Json                    @default("[]")
+  isSystemMessage Boolean                 @default(false)
+  priority        MessagePriority         @default(NORMAL)
+  systemData      Json?
+  threadId        String?
+  actionData      Json?
+  actionType      String?
+  deliveries      MessageDelivery[]
+  mentions        MessageMention[]
+  moderation      MessageModeration?
+  reactions       MessageReaction[]
+  reads           MessageRead[]
+  conversation    Conversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyTo         Message?                @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies         Message[]               @relation("MessageReplies")
+  sender          User                    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  thread          Message?                @relation("MessageThread", fields: [threadId], references: [id])
+  threadMessages  Message[]               @relation("MessageThread")
   progressUpdates ProjectProgressUpdate[]
-  moderation     MessageModeration?
-  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  replyTo        Message?      @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies        Message[]     @relation("MessageReplies")
-  thread         Message?      @relation("MessageThread", fields: [threadId], references: [id])
-  threadMessages Message[]     @relation("MessageThread")
-  sender         User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
@@ -990,6 +1006,295 @@ model UserAnalytics {
   @@map("user_analytics")
 }
 
+model Reward {
+  id        String       @id @default(uuid())
+  userId    String
+  type      RewardType
+  action    String
+  amount    Decimal      @default(0)
+  points    Int          @default(0)
+  status    RewardStatus @default(PENDING)
+  metadata  Json         @default("{}")
+  expiresAt DateTime?
+  claimedAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rewards")
+}
+
+model UserRewardStats {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  totalEarned    Decimal   @default(0)
+  totalPoints    Int       @default(0)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  tier           UserTier  @default(BRONZE)
+  nextTierPoints Int       @default(1000)
+  lifetimeEarned Decimal   @default(0)
+  monthlyEarned  Decimal   @default(0)
+  weeklyEarned   Decimal   @default(0)
+  lastRewardAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_reward_stats")
+}
+
+model Referral {
+  id           String         @id @default(uuid())
+  referrerId   String
+  refereeId    String
+  referralCode String         @unique
+  status       ReferralStatus @default(PENDING)
+  rewardAmount Decimal        @default(0)
+  rewardPaid   Boolean        @default(false)
+  rewardPaidAt DateTime?
+  completedAt  DateTime?
+  metadata     Json           @default("{}")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  referee      User           @relation("RefereeReferrals", fields: [refereeId], references: [id])
+  referrer     User           @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+
+  @@unique([referrerId, refereeId])
+  @@map("referrals")
+}
+
+model UserStreak {
+  id           String     @id @default(uuid())
+  userId       String
+  streakType   StreakType
+  currentCount Int        @default(0)
+  maxCount     Int        @default(0)
+  lastActiveAt DateTime?
+  isActive     Boolean    @default(true)
+  metadata     Json       @default("{}")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+  @@map("user_streaks")
+}
+
+model Badge {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  title       String
+  description String
+  category    BadgeCategory
+  icon        String?
+  color       String        @default("#6B7280")
+  rarity      BadgeRarity   @default(COMMON)
+  criteria    Json          @default("{}")
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  userBadges  UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+  isVisible Boolean  @default(true)
+  metadata  Json     @default("{}")
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Leaderboard {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  title       String
+  description String?
+  type        LeaderboardType
+  period      LeaderboardPeriod
+  category    String?
+  isActive    Boolean            @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  metadata    Json               @default("{}")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  entries     LeaderboardEntry[]
+
+  @@map("leaderboards")
+}
+
+model LeaderboardEntry {
+  id            String      @id @default(uuid())
+  leaderboardId String
+  userId        String
+  rank          Int
+  score         Decimal     @default(0)
+  metadata      Json        @default("{}")
+  period        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderboardId, userId, period])
+  @@map("leaderboard_entries")
+}
+
+model RewardConfig {
+  id          String     @id @default(uuid())
+  action      String     @unique
+  type        RewardType
+  amount      Decimal    @default(0)
+  points      Int        @default(0)
+  isActive    Boolean    @default(true)
+  conditions  Json       @default("{}")
+  limits      Json       @default("{}")
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("reward_configs")
+}
+
+model Campaign {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  title       String
+  description String?
+  type        CampaignType
+  status      CampaignStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+  budget      Decimal        @default(0)
+  spent       Decimal        @default(0)
+  conditions  Json           @default("{}")
+  rewards     Json           @default("{}")
+  metadata    Json           @default("{}")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("campaigns")
+}
+
+model Contract {
+  id                 String         @id @default(uuid())
+  projectId          String         @unique
+  clientId           String
+  freelancerId       String
+  title              String
+  description        String
+  terms              String
+  amount             Decimal
+  currency           String         @default("NGN")
+  status             ContractStatus @default(DRAFT)
+  startDate          DateTime?
+  endDate            DateTime?
+  signedAt           DateTime?
+  clientSignedAt     DateTime?
+  freelancerSignedAt DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  client             User           @relation("ClientContracts", fields: [clientId], references: [id])
+  freelancer         User           @relation("FreelancerContracts", fields: [freelancerId], references: [id])
+  project            Project        @relation(fields: [projectId], references: [id])
+  disputes           Dispute[]
+
+  @@map("contracts")
+}
+
+model Dispute {
+  id            String            @id @default(uuid())
+  contractId    String?
+  projectId     String?
+  raisedBy      String
+  againstUserId String
+  title         String
+  description   String
+  evidence      Json              @default("[]")
+  status        DisputeStatus     @default(OPEN)
+  priority      DisputePriority   @default(MEDIUM)
+  resolution    String?
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  responses     DisputeResponse[]
+  againstUser   User              @relation("DisputesAgainst", fields: [againstUserId], references: [id])
+  contract      Contract?         @relation(fields: [contractId], references: [id])
+  project       Project?          @relation(fields: [projectId], references: [id])
+  raisedByUser  User              @relation("RaisedDisputes", fields: [raisedBy], references: [id])
+  resolver      User?             @relation("ResolvedDisputes", fields: [resolvedBy], references: [id])
+
+  @@map("disputes")
+}
+
+model DisputeResponse {
+  id          String   @id @default(uuid())
+  disputeId   String
+  responderId String
+  message     String
+  attachments Json     @default("[]")
+  isOfficial  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  dispute     Dispute  @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  responder   User     @relation("DisputeResponses", fields: [responderId], references: [id])
+
+  @@map("dispute_responses")
+}
+
+model UserVerification {
+  id              String              @id @default(uuid())
+  userId          String              @unique
+  documentType    VerificationDocType
+  documentNumber  String
+  documentImages  String[]
+  selfieImage     String?
+  status          VerificationStatus  @default(PENDING)
+  submittedAt     DateTime            @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+  notes           String?
+  reviewer        User?               @relation("VerificationReviews", fields: [reviewedBy], references: [id])
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_verifications")
+}
+
+model TwoFactorCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_codes")
+}
+
+model Contact {
+  id        String        @id @default(uuid())
+  name      String
+  email     String
+  subject   ContactSubject @default(GENERAL)
+  message   String
+  status    ContactStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("contacts")
+}
+
 enum UserRole {
   FREELANCER
   CLIENT
@@ -1003,6 +1308,7 @@ enum UserStatus {
   SUSPENDED
   BANNED
   PENDING_VERIFICATION
+  DELETED
 }
 
 enum AuthProvider {
@@ -1129,6 +1435,8 @@ enum TransactionType {
   FEE
   BONUS
   PENALTY
+  CREDIT
+  DEBIT
 }
 
 enum TransactionStatus {
@@ -1228,6 +1536,10 @@ enum NotificationType {
   PROJECT_UPDATE
   CHALLENGE
   MARKETING
+  VERIFICATION_SUBMITTED
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  VERIFICATION_ADDITIONAL_DOCS
 }
 
 enum NotificationChannel {
@@ -1306,124 +1618,6 @@ enum AchievementRarity {
   LEGENDARY
 }
 
-model Contract {
-  id                String            @id @default(uuid())
-  projectId         String            @unique
-  jobId             String?
-  clientId          String
-  freelancerId      String
-  title             String
-  description       String?
-  terms             String
-  amount            Decimal
-  currency          String            @default("NGN")
-  paymentSchedule   PaymentSchedule   @default(MILESTONE)
-  startDate         DateTime
-  endDate           DateTime?
-  status            ContractStatus    @default(ACTIVE)
-  signedByClient    Boolean           @default(false)
-  signedByFreelancer Boolean          @default(false)
-  clientSignedAt    DateTime?
-  freelancerSignedAt DateTime?
-  completedAt       DateTime?
-  terminatedAt      DateTime?
-  terminationReason String?
-  revisionLimit     Int               @default(3)
-  deliverables      Json              @default("[]")
-  milestones        Json              @default("[]")
-  attachments       Json              @default("[]")
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  job               Job?              @relation(fields: [jobId], references: [id])
-  client            User              @relation("ClientContracts", fields: [clientId], references: [id])
-  freelancer        User              @relation("FreelancerContracts", fields: [freelancerId], references: [id])
-  disputes          Dispute[]
-
-  @@map("contracts")
-}
-
-model Dispute {
-  id                String          @id @default(uuid())
-  projectId         String?
-  contractId        String?
-  jobId             String?
-  raisedBy          String
-  againstUser       String
-  title             String
-  description       String
-  category          DisputeCategory @default(OTHER)
-  priority          DisputePriority @default(NORMAL)
-  status            DisputeStatus   @default(OPEN)
-  amount            Decimal?
-  currency          String          @default("NGN")
-  evidence          Json            @default("[]")
-  adminNotes        String?
-  resolution        String?
-  resolvedBy        String?
-  resolvedAt        DateTime?
-  escalatedAt       DateTime?
-  dueDate           DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  project           Project?        @relation(fields: [projectId], references: [id])
-  contract          Contract?       @relation(fields: [contractId], references: [id])
-  job               Job?            @relation(fields: [jobId], references: [id])
-  raisedByUser      User            @relation("RaisedDisputes", fields: [raisedBy], references: [id])
-  againstUserRef    User            @relation("DisputesAgainst", fields: [againstUser], references: [id])
-  resolver          User?           @relation("ResolvedDisputes", fields: [resolvedBy], references: [id])
-  responses         DisputeResponse[]
-
-  @@map("disputes")
-}
-
-model DisputeResponse {
-  id          String    @id @default(uuid())
-  disputeId   String
-  userId      String
-  message     String
-  attachments Json      @default("[]")
-  isAdminResponse Boolean @default(false)
-  createdAt   DateTime  @default(now())
-  dispute     Dispute   @relation(fields: [disputeId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@map("dispute_responses")
-}
-
-enum ContractStatus {
-  DRAFT
-  ACTIVE
-  COMPLETED
-  TERMINATED
-  DISPUTED
-}
-
-enum DisputeCategory {
-  PAYMENT
-  QUALITY
-  TIMELINE
-  SCOPE
-  COMMUNICATION
-  BREACH_OF_CONTRACT
-  OTHER
-}
-
-enum DisputeStatus {
-  OPEN
-  IN_REVIEW
-  ESCALATED
-  RESOLVED
-  CLOSED
-}
-
-enum DisputePriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
 enum LoginStatus {
   SUCCESS
   FAILED
@@ -1434,186 +1628,6 @@ enum ProgressUpdateStatus {
   PENDING
   CONFIRMED
   CHANGE_REQUESTED
-}
-
-// Reward System Models
-model Reward {
-  id          String        @id @default(uuid())
-  userId      String
-  type        RewardType
-  action      String        // 'profile_complete', 'first_job', etc.
-  amount      Decimal       @default(0)
-  points      Int           @default(0)
-  status      RewardStatus  @default(PENDING)
-  metadata    Json          @default("{}")
-  expiresAt   DateTime?
-  claimedAt   DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("rewards")
-}
-
-model UserRewardStats {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  totalEarned     Decimal  @default(0)
-  totalPoints     Int      @default(0)
-  currentStreak   Int      @default(0)
-  longestStreak   Int      @default(0)
-  tier            UserTier @default(BRONZE)
-  nextTierPoints  Int      @default(1000)
-  lifetimeEarned  Decimal  @default(0)
-  monthlyEarned   Decimal  @default(0)
-  weeklyEarned    Decimal  @default(0)
-  lastRewardAt    DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_reward_stats")
-}
-
-model Referral {
-  id              String        @id @default(uuid())
-  referrerId      String
-  refereeId       String
-  referralCode    String        @unique
-  status          ReferralStatus @default(PENDING)
-  rewardAmount    Decimal       @default(0)
-  rewardPaid      Boolean       @default(false)
-  rewardPaidAt    DateTime?
-  completedAt     DateTime?
-  metadata        Json          @default("{}")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  referrer        User          @relation("ReferrerReferrals", fields: [referrerId], references: [id])
-  referee         User          @relation("RefereeReferrals", fields: [refereeId], references: [id])
-
-  @@unique([referrerId, refereeId])
-  @@map("referrals")
-}
-
-model UserStreak {
-  id            String      @id @default(uuid())
-  userId        String
-  streakType    StreakType
-  currentCount  Int         @default(0)
-  maxCount      Int         @default(0)
-  lastActiveAt  DateTime?
-  isActive      Boolean     @default(true)
-  metadata      Json        @default("{}")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, streakType])
-  @@map("user_streaks")
-}
-
-model Badge {
-  id          String      @id @default(uuid())
-  name        String      @unique
-  title       String
-  description String
-  category    BadgeCategory
-  icon        String?
-  color       String      @default("#6B7280")
-  rarity      BadgeRarity @default(COMMON)
-  criteria    Json        @default("{}")
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  userBadges  UserBadge[]
-
-  @@map("badges")
-}
-
-model UserBadge {
-  id          String    @id @default(uuid())
-  userId      String
-  badgeId     String
-  earnedAt    DateTime  @default(now())
-  isVisible   Boolean   @default(true)
-  metadata    Json      @default("{}")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge       Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, badgeId])
-  @@map("user_badges")
-}
-
-model Leaderboard {
-  id          String             @id @default(uuid())
-  name        String             @unique
-  title       String
-  description String?
-  type        LeaderboardType
-  period      LeaderboardPeriod
-  category    String?
-  isActive    Boolean            @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
-  metadata    Json               @default("{}")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  entries     LeaderboardEntry[]
-
-  @@map("leaderboards")
-}
-
-model LeaderboardEntry {
-  id            String      @id @default(uuid())
-  leaderboardId String
-  userId        String
-  rank          Int
-  score         Decimal     @default(0)
-  metadata      Json        @default("{}")
-  period        String      // "2024-01", "2024-W01", etc.
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([leaderboardId, userId, period])
-  @@map("leaderboard_entries")
-}
-
-model RewardConfig {
-  id          String      @id @default(uuid())
-  action      String      @unique
-  type        RewardType
-  amount      Decimal     @default(0)
-  points      Int         @default(0)
-  isActive    Boolean     @default(true)
-  conditions  Json        @default("{}")
-  limits      Json        @default("{}")
-  description String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@map("reward_configs")
-}
-
-model Campaign {
-  id          String         @id @default(uuid())
-  name        String         @unique
-  title       String
-  description String?
-  type        CampaignType
-  status      CampaignStatus @default(DRAFT)
-  startDate   DateTime
-  endDate     DateTime
-  budget      Decimal        @default(0)
-  spent       Decimal        @default(0)
-  conditions  Json           @default("{}")
-  rewards     Json           @default("{}")
-  metadata    Json           @default("{}")
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  @@map("campaigns")
 }
 
 enum RewardType {
@@ -1701,4 +1715,64 @@ enum CampaignStatus {
   PAUSED
   COMPLETED
   CANCELLED
+}
+
+enum SponsorshipApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum DisputePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum VerificationDocType {
+  NATIONAL_ID
+  PASSPORT
+  DRIVERS_LICENSE
+  VOTERS_CARD
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ADDITIONAL_DOCS_REQUIRED
+}
+
+enum ContactSubject {
+  GENERAL
+  SUPPORT
+  BILLING
+  PARTNERSHIP
+  REPORT
+}
+
+enum ContactStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }

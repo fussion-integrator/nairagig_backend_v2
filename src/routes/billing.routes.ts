@@ -20,6 +20,12 @@ router.delete('/payment-cards/:id', authenticate, billingController.deletePaymen
 // Payment History
 router.get('/payment-history', authenticate, billingController.getPaymentHistory.bind(billingController));
 
+// Payment Processing
+router.post('/process-payment', authenticate, billingController.processPayment.bind(billingController));
+router.post('/process-withdrawal', authenticate, billingController.processWithdrawal.bind(billingController));
+router.post('/process-refund', authenticate, billingController.processRefund.bind(billingController));
+router.post('/flag-suspicious', authenticate, billingController.detectSuspiciousTransaction.bind(billingController));
+
 // Banks
 router.get('/banks', authenticate, billingController.getBanks.bind(billingController));
 router.post('/verify-account', authenticate, billingController.verifyBankAccount.bind(billingController));

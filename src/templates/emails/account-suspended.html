@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Suspension Notice - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 15px 30px; background: #dc2626; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .suspension-card { background: #fef2f2; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #dc2626; }
+        .details-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .appeal-box { background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0; }
+        .timeline-item { display: flex; align-items: flex-start; margin: 15px 0; }
+        .timeline-icon { margin-right: 15px; font-size: 18px; margin-top: 2px; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .warning { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">⚠️ NairaGig Notice</div>
+            <p style="color: #fecaca; margin-top: 10px;">Account Suspension</p>
+        </div>
+        
+        <div class="content">
+            <div class="suspension-card">
+                <h2 style="color: #dc2626; margin-bottom: 15px;">🚫 Account Suspended</h2>
+                <p style="color: #dc2626; font-size: 16px;">
+                    Your NairaGig account has been temporarily suspended due to a violation of our terms of service.
+                </p>
+            </div>
+            
+            <p style="margin-bottom: 20px;">Dear {{firstName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                We regret to inform you that your NairaGig account has been suspended effective immediately. 
+                This action was taken after a thorough review of your account activity.
+            </p>
+            
+            <div class="details-box">
+                <h3 style="color: #374151; margin-bottom: 15px;">📋 Suspension Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600; width: 30%;">Reason:</td>
+                        <td style="padding: 10px 0; color: #dc2626;">{{suspensionReason}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Date:</td>
+                        <td style="padding: 10px 0;">{{suspensionDate}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Duration:</td>
+                        <td style="padding: 10px 0;">{{suspensionDuration}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Reference ID:</td>
+                        <td style="padding: 10px 0;">{{referenceId}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 600;">Review Date:</td>
+                        <td style="padding: 10px 0;">{{reviewDate}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <h3 style="color: #374151; margin: 30px 0 20px 0;">📖 Policy Violation</h3>
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #dc2626; margin-bottom: 15px;">
+                    <strong>Specific Violation:</strong> {{violationDetails}}
+                </p>
+                <p style="color: #dc2626;">
+                    This action violates Section {{policySection}} of our Terms of Service. 
+                    You can review our complete terms at 
+                    <a href="{{websiteUrl}}/terms" style="color: #dc2626; text-decoration: underline;">{{websiteUrl}}/terms</a>
+                </p>
+            </div>
+            
+            <h3 style="color: #374151; margin: 30px 0 20px 0;">🔄 What Happens Next?</h3>
+            
+            <div class="timeline-item">
+                <span class="timeline-icon">1️⃣</span>
+                <div>
+                    <strong>Immediate Effect</strong>
+                    <p class="text-muted">Your account access is restricted. You cannot bid on jobs, participate in challenges, or access premium features.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <span class="timeline-icon">2️⃣</span>
+                <div>
+                    <strong>Review Period</strong>
+                    <p class="text-muted">Our team will conduct a comprehensive review of your case within {{reviewPeriod}} business days.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <span class="timeline-icon">3️⃣</span>
+                <div>
+                    <strong>Resolution</strong>
+                    <p class="text-muted">You will be notified of the final decision and any required actions for account restoration.</p>
+                </div>
+            </div>
+            
+            <div class="appeal-box">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">⚖️ Appeal Process</h3>
+                <p style="color: #1d4ed8; margin-bottom: 15px;">
+                    If you believe this suspension is in error, you can submit an appeal within 
+                    <strong>{{appealDeadline}} days</strong> of this notice.
+                </p>
+                
+                <h4 style="color: #1d4ed8; margin: 15px 0 10px 0;">To submit an appeal:</h4>
+                <ul style="color: #1d4ed8; margin-left: 20px; line-height: 1.8;">
+                    <li>Provide detailed explanation of your side</li>
+                    <li>Include any supporting evidence or documentation</li>
+                    <li>Reference your case ID: <strong>{{referenceId}}</strong></li>
+                    <li>Submit within the deadline to be considered</li>
+                </ul>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="{{appealUrl}}" class="btn" style="background: #3b82f6;">Submit Appeal</a>
+                </div>
+            </div>
+            
+            <h3 style="color: #374151; margin: 30px 0 15px 0;">💰 Account Balance & Payments</h3>
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <p style="color: #92400e;">
+                    <strong>Important:</strong> Your account balance of <strong>{{accountBalance}}</strong> 
+                    is temporarily frozen. Pending payments will be processed according to our dispute resolution policy. 
+                    Funds will be released upon successful appeal or after the suspension period ends.
+                </p>
+            </div>
+            
+            <h3 style="color: #374151; margin: 30px 0 15px 0;">📞 Need Help?</h3>
+            <p style="color: #6b7280;">
+                For questions about this suspension or the appeal process:
+            </p>
+            <ul style="color: #6b7280; margin: 15px 0 0 20px; line-height: 1.8;">
+                <li>Email: <a href="mailto:appeals@nairagig.com" style="color: #dc2626;">appeals@nairagig.com</a></li>
+                <li>Reference your case ID: <strong>{{referenceId}}</strong></li>
+                <li>Response time: 2-3 business days</li>
+            </ul>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                We take these matters seriously and appreciate your understanding as we work to maintain 
+                a safe and fair platform for all users.
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Sincerely,<br>
+                <strong>NairaGig Trust & Safety Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                This is an official notice. Please do not reply to this email.<br>
+                For appeals, use the dedicated appeal system or email appeals@nairagig.com<br>
+                © {{currentYear}} NairaGig. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

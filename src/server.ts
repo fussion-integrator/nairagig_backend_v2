@@ -37,7 +37,18 @@ import { proposalRoutes } from '@/routes/proposal.routes';
 import { contractRoutes } from '@/routes/contract.routes';
 import { disputeRoutes } from '@/routes/dispute.routes';
 import { reviewRoutes } from '@/routes/review.routes';
+import { supportRoutes } from '@/routes/support.routes';
+import { scheduledJobsRoutes } from '@/routes/scheduled-jobs.routes';
+import { adminRoutes } from '@/routes/admin.routes';
+import { platformEventsRoutes } from '@/routes/platform-events.routes';
+import { marketingRoutes } from '@/routes/marketing.routes';
+import contactRoutes from '@/routes/contact.routes';
+import { notificationBulkRoutes } from '@/routes/notification-bulk.routes';
 import { setupSocketIO } from '@/config/socket';
+import searchRoutes from '@/routes/search.routes';
+import securityRoutes from '@/routes/security.routes';
+import testRoutes from '@/routes/test.routes';
+import { sessionTimeoutMiddleware } from '@/middleware/session-timeout.middleware';
 
 const app = express();
 const server = createServer(app);
@@ -95,6 +106,9 @@ app.use('/uploads', express.static('uploads'));
 // Logging middleware
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
+// Session timeout middleware (apply to all API routes)
+app.use('/api/', sessionTimeoutMiddleware);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -129,6 +143,16 @@ app.use(`/api/${config.apiVersion}/proposals`, proposalRoutes);
 app.use(`/api/${config.apiVersion}/contracts`, contractRoutes);
 app.use(`/api/${config.apiVersion}/disputes`, disputeRoutes);
 app.use(`/api/${config.apiVersion}/reviews`, reviewRoutes);
+app.use(`/api/${config.apiVersion}/support`, supportRoutes);
+app.use(`/api/${config.apiVersion}/webhooks/scheduled`, scheduledJobsRoutes);
+app.use(`/api/${config.apiVersion}/admin`, adminRoutes);
+app.use(`/api/${config.apiVersion}/platform-events`, platformEventsRoutes);
+app.use(`/api/${config.apiVersion}/marketing`, marketingRoutes);
+app.use(`/api/${config.apiVersion}/contact`, contactRoutes);
+app.use(`/api/${config.apiVersion}/search`, searchRoutes);
+app.use(`/api/${config.apiVersion}/security`, securityRoutes);
+app.use(`/api/${config.apiVersion}/test`, testRoutes);
+app.use(`/api/${config.apiVersion}/notifications/bulk`, notificationBulkRoutes);
 app.use(`/api/${config.apiVersion}/debug`, debugRoutes);
 
 // Error handling middleware

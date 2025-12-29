@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge Cancelled - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .cancellation-card { background: #fff5f5; border-left: 4px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .refund-info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .alternatives { background: #f8f9fa; border: 1px solid #dee2e6; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .warning-icon { font-size: 48px; color: #dc3545; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Challenge Cancelled</h1>
+            <p>Important update about your challenge</p>
+        </div>
+        
+        <div class="content">
+            <div class="warning-icon">⚠️</div>
+            
+            <p>Hi {{participantName}},</p>
+            
+            <p>We regret to inform you that the <strong>{{challengeTitle}}</strong> challenge has been cancelled.</p>
+            
+            <div class="cancellation-card">
+                <h3>📋 Cancellation Details</h3>
+                <p><strong>Challenge:</strong> {{challengeTitle}}</p>
+                <p><strong>Cancellation Date:</strong> {{cancellationDate}}</p>
+                <p><strong>Reason:</strong> {{cancellationReason}}</p>
+                <p><strong>Your Registration:</strong> {{registrationDate}}</p>
+                {{#if hadSubmission}}
+                <p><strong>Your Submission:</strong> Submitted on {{submissionDate}}</p>
+                {{/if}}
+            </div>
+            
+            {{#if hasRefund}}
+            <div class="refund-info">
+                <h3>💰 Refund Information</h3>
+                <p><strong>Registration Fee:</strong> ₦{{registrationFee}}</p>
+                <p><strong>Refund Amount:</strong> ₦{{refundAmount}}</p>
+                <p><strong>Processing Time:</strong> {{refundProcessingTime}}</p>
+                <p>Your refund will be processed automatically and credited to your account.</p>
+            </div>
+            {{/if}}
+            
+            <h3>🤔 Why was this cancelled?</h3>
+            <p>{{detailedReason}}</p>
+            
+            {{#if alternativeChallenges}}
+            <div class="alternatives">
+                <h3>🔄 Alternative Challenges</h3>
+                <p>Don't worry! Here are some similar challenges you might be interested in:</p>
+                {{#each alternativeChallenges}}
+                <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                    <strong>{{title}}</strong><br>
+                    Prize: ₦{{prize}} | Deadline: {{deadline}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            
+            <h3>📞 Need Help?</h3>
+            <ul>
+                <li>Contact our support team if you have questions</li>
+                <li>Check your account for refund status</li>
+                <li>Browse other active challenges</li>
+                <li>Join our community for updates on new challenges</li>
+            </ul>
+            
+            <div style="text-align: center;">
+                <a href="{{challengesUrl}}" class="cta-button">Browse Active Challenges</a>
+            </div>
+            
+            <p>We sincerely apologize for any inconvenience this may have caused. We're committed to providing you with the best challenge experience possible.</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Questions? Contact support@nairagig.com</p>
+        </div>
+    </div>
+</body>
+</html>

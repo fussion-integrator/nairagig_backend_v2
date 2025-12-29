@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Status Update - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .status-card { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .approved { background: #f8fff8; border-left-color: #28a745; }
+        .rejected { background: #fff5f5; border-left-color: #dc3545; }
+        .pending { background: #fff3cd; border-left-color: #ffc107; }
+        .verification-details { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .status-icon { font-size: 48px; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Verification Update</h1>
+            <p>Your verification status has changed</p>
+        </div>
+        
+        <div class="content">
+            <div class="status-icon">
+                {{#if isApproved}}✅{{else}}{{#if isRejected}}❌{{else}}⏳{{/if}}{{/if}}
+            </div>
+            
+            <p>Hi {{userName}},</p>
+            
+            <p>We have an update regarding your identity verification on NairaGig.</p>
+            
+            <div class="status-card {{#if isApproved}}approved{{else}}{{#if isRejected}}rejected{{else}}pending{{/if}}{{/if}}">
+                <h3>📋 Verification Status</h3>
+                <p><strong>Status:</strong> {{verificationStatus}}</p>
+                <p><strong>Verification Type:</strong> {{verificationType}}</p>
+                <p><strong>Submission Date:</strong> {{submissionDate}}</p>
+                <p><strong>Review Date:</strong> {{reviewDate}}</p>
+                {{#if referenceNumber}}
+                <p><strong>Reference:</strong> {{referenceNumber}}</p>
+                {{/if}}
+            </div>
+            
+            {{#if isApproved}}
+            <h3>🎉 Congratulations!</h3>
+            <p>Your identity verification has been <strong>approved</strong>. You now have access to:</p>
+            <ul>
+                <li>Higher earning limits</li>
+                <li>Premium job opportunities</li>
+                <li>Faster withdrawal processing</li>
+                <li>Enhanced trust badge on your profile</li>
+                <li>Priority customer support</li>
+            </ul>
+            {{/if}}
+            
+            {{#if isRejected}}
+            <h3>❌ Verification Not Approved</h3>
+            <p>Unfortunately, we couldn't approve your verification at this time.</p>
+            
+            <div class="verification-details">
+                <h4>📋 Reason for Rejection</h4>
+                <p>{{rejectionReason}}</p>
+                {{#if additionalNotes}}
+                <p><strong>Additional Notes:</strong> {{additionalNotes}}</p>
+                {{/if}}
+            </div>
+            
+            <h3>🔄 Next Steps</h3>
+            <ul>
+                <li>Review the rejection reason carefully</li>
+                <li>Prepare the required documents</li>
+                <li>Resubmit your verification</li>
+                <li>Contact support if you need help</li>
+            </ul>
+            {{/if}}
+            
+            {{#if isPending}}
+            <h3>⏳ Under Review</h3>
+            <p>Your verification is currently being reviewed by our team.</p>
+            
+            <div class="verification-details">
+                <h4>📋 Review Progress</h4>
+                <p><strong>Documents Received:</strong> {{documentsReceived}}</p>
+                <p><strong>Expected Completion:</strong> {{expectedCompletion}}</p>
+                <p><strong>Current Stage:</strong> {{currentStage}}</p>
+            </div>
+            
+            <p>We'll notify you as soon as the review is complete.</p>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                {{#if isRejected}}
+                <a href="{{resubmitUrl}}" class="cta-button">Resubmit Verification</a>
+                {{else}}
+                <a href="{{verificationUrl}}" class="cta-button">View Verification Status</a>
+                {{/if}}
+            </div>
+            
+            <p>If you have any questions about the verification process, please don't hesitate to contact our support team.</p>
+            
+            <p>Best regards,<br>The NairaGig Verification Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Support: support@nairagig.com</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Notice - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .maintenance-card { background: #fff3cd; border-left: 4px solid #f39c12; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .schedule-details { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .impact-info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #f39c12; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .maintenance-icon { font-size: 48px; color: #f39c12; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Maintenance Notice</h1>
+            <p>Scheduled system maintenance</p>
+        </div>
+        
+        <div class="content">
+            <div class="maintenance-icon">⚙️</div>
+            
+            <p>Hi {{userName}},</p>
+            
+            <p>We're writing to inform you about scheduled maintenance on the NairaGig platform.</p>
+            
+            <div class="maintenance-card">
+                <h3>🔧 Maintenance Details</h3>
+                <p><strong>Type:</strong> {{maintenanceType}}</p>
+                <p><strong>Start Time:</strong> {{startTime}}</p>
+                <p><strong>End Time:</strong> {{endTime}}</p>
+                <p><strong>Duration:</strong> {{duration}}</p>
+                <p><strong>Status:</strong> {{maintenanceStatus}}</p>
+            </div>
+            
+            <div class="schedule-details">
+                <h4>📅 Schedule Information</h4>
+                <p><strong>Date:</strong> {{maintenanceDate}}</p>
+                <p><strong>Timezone:</strong> {{timezone}}</p>
+                {{#if isRecurring}}
+                <p><strong>Frequency:</strong> {{recurringSchedule}}</p>
+                {{/if}}
+            </div>
+            
+            <h3>🔍 What we're doing:</h3>
+            <p>{{maintenanceDescription}}</p>
+            
+            {{#if improvements}}
+            <h3>✨ Improvements & Updates</h3>
+            <ul>
+                {{#each improvements}}
+                <li>{{this}}</li>
+                {{/each}}
+            </ul>
+            {{/if}}
+            
+            <div class="impact-info">
+                <h3>📊 Expected Impact</h3>
+                <p><strong>Service Availability:</strong> {{serviceAvailability}}</p>
+                {{#if affectedServices}}
+                <p><strong>Affected Services:</strong></p>
+                <ul>
+                    {{#each affectedServices}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+                {{#if unaffectedServices}}
+                <p><strong>Services Remaining Available:</strong></p>
+                <ul>
+                    {{#each unaffectedServices}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+            </div>
+            
+            <h3>📋 What you need to know:</h3>
+            <ul>
+                <li>Save your work before the maintenance window</li>
+                <li>Avoid starting new projects during this time</li>
+                <li>Check our status page for real-time updates</li>
+                <li>Contact support if you experience issues after maintenance</li>
+            </ul>
+            
+            {{#if alternativeAccess}}
+            <div style="background: #e8f5e8; border: 1px solid #c3e6c3; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>🔄 Alternative Access</h4>
+                <p>{{alternativeAccess}}</p>
+            </div>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{statusPageUrl}}" class="cta-button">View Status Page</a>
+            </div>
+            
+            <p>We apologize for any inconvenience and appreciate your patience as we work to improve your NairaGig experience.</p>
+            
+            <p>Best regards,<br>The NairaGig Technical Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Status: <a href="{{statusPageUrl}}" style="color: #666;">status.nairagig.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

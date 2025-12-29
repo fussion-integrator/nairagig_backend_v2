@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '@/types/auth';
 import { EncryptionService } from '@/utils/encryption';
+import { emailService } from '@/services/email.service';
+import { logger } from '@/utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -487,5 +489,202 @@ export class BillingController {
     if (number.startsWith('5') || number.startsWith('2')) return 'mastercard';
     if (number.startsWith('506') || number.startsWith('507') || number.startsWith('508') || number.startsWith('627')) return 'verve';
     return 'unknown';
+  }
+
+  async processPayment(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { projectId, milestoneId, amount, paymentMethod, cardId } = req.body;
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) throw new Error('User not found');
+
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+          freelancer: { select: { firstName: true, lastName: true, email: true } }
+        }
+      });
+      if (!project) throw new Error('Project not found');
+
+      // Create transaction record
+      const transaction = await prisma.transaction.create({
+        data: {
+          userId: userId!,
+          type: 'PAYMENT',
+          amount: parseFloat(amount),
+          status: 'COMPLETED',
+          description: `Payment for ${project.title}`,
+          referenceId: `PAY-${Date.now()}`,
+          gatewayProvider: paymentMethod
+        }
+      });
+
+      // Send payment received email to client
+      await emailService.sendPaymentReceivedConfirmation(
+        user.email!,
+        {
+          recipientName: user.firstName,
+          projectTitle: project.title,
+          freelancerName: `${project.freelancer.firstName} ${project.freelancer.lastName}`,
+          totalAmount: amount,
+          milestoneTitle: milestoneId ? 'Milestone Payment' : undefined,
+          paymentType: milestoneId ? 'Milestone' : 'Project',
+          paymentDate: new Date().toLocaleDateString(),
+          baseAmount: amount,
+          paymentMethod: paymentMethod,
+          transactionId: transaction.referenceId,
+          hasNextMilestone: false,
+          projectUrl: `${process.env.FRONTEND_URL}/projects/${projectId}`,
+          receiptUrl: `${process.env.FRONTEND_URL}/billing/receipts/${transaction.id}`,
+          billingUrl: `${process.env.FRONTEND_URL}/billing/history`
+        }
+      );
+
+      res.json({ success: true, data: transaction });
+    } catch (error) {
+      logger.error('Payment processing error:', error);
+      
+      // Send payment failed email
+      if (req.user?.id) {
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        if (user) {
+          await emailService.sendPaymentFailed(
+            user.email!,
+            {
+              recipientName: user.firstName,
+              projectTitle: req.body.projectTitle || 'Unknown Project',
+              paymentAmount: req.body.amount || '0',
+              attemptDate: new Date().toLocaleDateString(),
+              failureReason: error instanceof Error ? error.message : 'Payment processing failed',
+              paymentMethod: req.body.paymentMethod || 'Unknown',
+              transactionId: `FAIL-${Date.now()}`,
+              isInsufficientFunds: false,
+              isCardDeclined: true,
+              isNetworkError: false,
+              isGenericError: true,
+              retryPaymentUrl: `${process.env.FRONTEND_URL}/projects/${req.body.projectId}/payment`,
+              paymentMethodsUrl: `${process.env.FRONTEND_URL}/billing/payment-methods`,
+              supportUrl: `${process.env.FRONTEND_URL}/support`
+            }
+          );
+        }
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Payment processing failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  async processWithdrawal(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { amount, bankAccountId } = req.body;
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) throw new Error('User not found');
+
+      const bankAccount = await prisma.bankAccount.findUnique({ where: { id: bankAccountId } });
+      if (!bankAccount) throw new Error('Bank account not found');
+
+      const processingFee = parseFloat(amount) * 0.01; // 1% processing fee
+      const netAmount = parseFloat(amount) - processingFee;
+
+      // Create withdrawal transaction
+      const transaction = await prisma.transaction.create({
+        data: {
+          userId: userId!,
+          type: 'WITHDRAWAL',
+          amount: parseFloat(amount),
+          status: 'COMPLETED',
+          description: `Withdrawal to ${bankAccount.bankName}`,
+          referenceId: `WTH-${Date.now()}`,
+          gatewayProvider: 'Bank Transfer'
+        }
+      });
+
+      // Send withdrawal processed email
+      await emailService.sendWithdrawalProcessed(
+        user.email!,
+        {
+          recipientName: user.firstName,
+          withdrawalAmount: netAmount.toString(),
+          requestedAmount: amount,
+          processingFee: processingFee.toString(),
+          requestDate: new Date().toLocaleDateString(),
+          processedDate: new Date().toLocaleDateString(),
+          bankName: bankAccount.bankName,
+          accountName: EncryptionService.decrypt(bankAccount.accountName),
+          maskedAccountNumber: '****' + EncryptionService.decrypt(bankAccount.accountNumber).slice(-4),
+          transactionReference: transaction.referenceId,
+          expectedArrival: '1-3 business days',
+          balanceBefore: '0', // Would need to calculate from wallet
+          remainingBalance: '0', // Would need to calculate from wallet
+          hasEarningsWaiting: false,
+          earningsUrl: `${process.env.FRONTEND_URL}/earnings`,
+          withdrawalHistoryUrl: `${process.env.FRONTEND_URL}/billing/withdrawals`,
+          bankAccountsUrl: `${process.env.FRONTEND_URL}/billing/bank-accounts`
+        }
+      );
+
+      res.json({ success: true, data: transaction });
+    } catch (error) {
+      logger.error('Withdrawal processing error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Withdrawal processing failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  async processRefund(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { transactionId, refundAmount, reason } = req.body;
+
+      // Mock refund processing
+      const refund = {
+        id: `refund_${Date.now()}`,
+        originalTransactionId: transactionId,
+        refundAmount: parseFloat(refundAmount),
+        reason,
+        status: 'PROCESSED',
+        processedAt: new Date()
+      };
+
+      res.json({ success: true, data: refund });
+    } catch (error) {
+      logger.error('Refund processing error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Refund processing failed'
+      });
+    }
+  }
+
+  async detectSuspiciousTransaction(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { transactionId, reason } = req.body;
+
+      // Mock suspicious transaction flagging
+      const flag = {
+        id: `flag_${Date.now()}`,
+        transactionId,
+        reason,
+        flaggedAt: new Date(),
+        status: 'FLAGGED'
+      };
+
+      res.json({ success: true, data: flag });
+    } catch (error) {
+      logger.error('Transaction flagging error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Transaction flagging failed'
+      });
+    }
   }
 }

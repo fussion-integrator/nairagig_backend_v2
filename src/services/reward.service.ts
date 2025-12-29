@@ -32,7 +32,7 @@ export class RewardService {
       });
 
       // Update wallet
-      if (config.amount > 0) {
+      if (Number(config.amount) > 0) {
         await prisma.wallet.upsert({
           where: { userId_currency: { userId, currency: 'NGN' } },
           update: {
@@ -107,7 +107,7 @@ export class RewardService {
       });
 
       // Update wallet
-      if (config.amount > 0) {
+      if (Number(config.amount) > 0) {
         await prisma.wallet.upsert({
           where: { userId_currency: { userId, currency: 'NGN' } },
           update: {
@@ -170,7 +170,7 @@ export class RewardService {
       });
 
       // Update wallet
-      if (config.amount > 0) {
+      if (Number(config.amount) > 0) {
         await prisma.wallet.upsert({
           where: { userId_currency: { userId, currency: 'NGN' } },
           update: {

@@ -3,6 +3,7 @@ import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
 import { getIO } from '@/config/socket';
+import { emailService } from '@/services/email.service';
 
 export class ProjectController {
   async getProjects(req: Request, res: Response, next: NextFunction) {
@@ -160,15 +161,9 @@ export class ProjectController {
         data: {
           title,
           description,
-          category,
-          subcategory,
-          budget,
-          timeline,
-          skillsRequired,
-          experienceLevel,
-          projectType,
-          attachments,
+          agreedBudget: budget,
           clientId: userId,
+          freelancerId: req.body.freelancerId,
           status: 'ACTIVE' as any,
         },
         include: {
@@ -177,11 +172,49 @@ export class ProjectController {
               id: true,
               firstName: true,
               lastName: true,
-              profileImageUrl: true
+              profileImageUrl: true,
+              email: true
+            }
+          },
+          freelancer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profileImageUrl: true,
+              email: true
             }
           }
         }
       });
+
+      // Send project started emails to both parties
+      if (project.client && project.freelancer) {
+        const projectData = {
+          recipientName: project.client.firstName,
+          projectTitle: project.title,
+          partnerName: `${project.freelancer.firstName} ${project.freelancer.lastName}`,
+          isClient: true,
+          startDate: new Date().toLocaleDateString(),
+          expectedCompletion: timeline || 'To be determined',
+          totalBudget: budget?.toString() || '0',
+          projectUrl: `${process.env.FRONTEND_URL}/projects/${project.id}`
+        };
+
+        // Send to client
+        await emailService.sendProjectStarted(project.client.email!, projectData);
+
+        // Send to freelancer
+        await emailService.sendProjectStarted(
+          project.freelancer.email!,
+          {
+            ...projectData,
+            recipientName: project.freelancer.firstName,
+            partnerName: `${project.client.firstName} ${project.client.lastName}`,
+            isClient: false
+          }
+        );
+      }
 
       logger.info(`Project created: ${project.id} by user: ${userId}`);
 
@@ -373,6 +406,136 @@ export class ProjectController {
         success: true,
         data: milestones
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async submitMilestone(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { milestoneId } = req.params;
+      const { deliverables, description } = req.body;
+
+      const milestone = await prisma.projectMilestone.findUnique({
+        where: { id: milestoneId },
+        include: {
+          project: {
+            include: {
+              client: { select: { id: true, firstName: true, lastName: true, email: true } },
+              freelancer: { select: { id: true, firstName: true, lastName: true, email: true } }
+            }
+          }
+        }
+      });
+
+      if (!milestone) throw ApiError.notFound('Milestone not found');
+      if (milestone.project.freelancerId !== userId) throw ApiError.forbidden('Only freelancer can submit milestone');
+      if (milestone.status !== 'SUBMITTED') throw ApiError.badRequest('Milestone not submitted for approval');
+
+      const updatedMilestone = await prisma.projectMilestone.update({
+        where: { id: milestoneId },
+        data: {
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+          deliverables,
+          freelancerNotes: description
+        }
+      });
+
+      // Send milestone submitted email to client
+      await emailService.sendMilestoneSubmitted(
+        milestone.project.client.email!,
+        {
+          recipientName: milestone.project.client.firstName,
+          projectTitle: milestone.project.title,
+          milestoneTitle: milestone.title,
+          milestoneAmount: milestone.amount?.toString() || '0',
+          submissionDate: new Date().toLocaleDateString(),
+          description,
+          freelancerName: `${milestone.project.freelancer.firstName} ${milestone.project.freelancer.lastName}`,
+          isClient: true,
+          deliverables: deliverables?.map((d: any) => ({ name: d.name, description: d.description })),
+          reviewDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          reviewUrl: `${process.env.FRONTEND_URL}/projects/${milestone.projectId}/milestones/${milestoneId}`,
+          projectUrl: `${process.env.FRONTEND_URL}/projects/${milestone.projectId}`,
+          messageUrl: `${process.env.FRONTEND_URL}/messages`
+        }
+      );
+
+      res.json({ success: true, data: updatedMilestone });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async approveMilestone(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { milestoneId } = req.params;
+      const { approvalNotes, clientFeedback } = req.body;
+
+      const milestone = await prisma.projectMilestone.findUnique({
+        where: { id: milestoneId },
+        include: {
+          project: {
+            include: {
+              client: { select: { id: true, firstName: true, lastName: true, email: true } },
+              freelancer: { select: { id: true, firstName: true, lastName: true, email: true } }
+            }
+          }
+        }
+      });
+
+      if (!milestone) throw ApiError.notFound('Milestone not found');
+      if (milestone.project.clientId !== userId) throw ApiError.forbidden('Only client can approve milestone');
+      if (milestone.status !== 'SUBMITTED') throw ApiError.badRequest('Milestone not submitted for approval');
+
+      const updatedMilestone = await prisma.projectMilestone.update({
+        where: { id: milestoneId },
+        data: {
+          status: 'APPROVED',
+          approvedAt: new Date(),
+          clientFeedback
+        }
+      });
+
+      // Check if there are more milestones
+      const nextMilestone = await prisma.projectMilestone.findFirst({
+        where: {
+          projectId: milestone.projectId,
+          status: 'PENDING'
+        },
+        orderBy: { orderIndex: 'asc' }
+      });
+
+      // Send milestone approved email to freelancer
+      await emailService.sendMilestoneApproved(
+        milestone.project.freelancer.email!,
+        {
+          recipientName: milestone.project.freelancer.firstName,
+          projectTitle: milestone.project.title,
+          milestoneTitle: milestone.title,
+          milestoneAmount: milestone.amount?.toString() || '0',
+          approvalDate: new Date().toLocaleDateString(),
+          approvalNotes,
+          clientFeedback,
+          clientName: `${milestone.project.client.firstName} ${milestone.project.client.lastName}`,
+          isFreelancer: true,
+          paymentAmount: milestone.amount?.toString() || '0',
+          processingFee: '0',
+          netAmount: milestone.amount?.toString() || '0',
+          paymentETA: '1-3 business days',
+          hasNextMilestone: !!nextMilestone,
+          nextMilestoneTitle: nextMilestone?.title,
+          nextMilestoneDue: nextMilestone?.dueDate?.toLocaleDateString(),
+          nextMilestoneAmount: nextMilestone?.amount?.toString(),
+          projectUrl: `${process.env.FRONTEND_URL}/projects/${milestone.projectId}`,
+          portfolioUrl: `${process.env.FRONTEND_URL}/profile/portfolio`
+        }
+      );
+
+      res.json({ success: true, data: updatedMilestone });
     } catch (error) {
       next(error);
     }

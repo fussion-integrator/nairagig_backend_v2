@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Feature: {{featureName}} - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .feature-card { background: #f8fff8; border-left: 4px solid #28a745; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .benefit-item { background: #fff; border: 1px solid #e1e5e9; padding: 15px; border-radius: 8px; }
+        .how-to-use { background: #e3f2fd; border: 1px solid #bbdefb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .feature-icon { font-size: 48px; color: #28a745; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 New Feature Launch!</h1>
+            <p>{{featureName}} is now available</p>
+        </div>
+        
+        <div class="content">
+            <div class="feature-icon">✨</div>
+            
+            <p>Hi {{userName}},</p>
+            
+            <p>We're excited to announce the launch of <strong>{{featureName}}</strong> - a new feature designed to enhance your NairaGig experience!</p>
+            
+            <div class="feature-card">
+                <h3>🎯 What is {{featureName}}?</h3>
+                <p>{{featureDescription}}</p>
+                <p><strong>Launch Date:</strong> {{launchDate}}</p>
+                <p><strong>Availability:</strong> {{availability}}</p>
+            </div>
+            
+            {{#if benefits}}
+            <h3>💡 Key Benefits</h3>
+            <div class="benefits-grid">
+                {{#each benefits}}
+                <div class="benefit-item">
+                    <strong>{{icon}} {{title}}</strong>
+                    <p>{{description}}</p>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            
+            <div class="how-to-use">
+                <h3>📋 How to Get Started</h3>
+                <ol>
+                    {{#each steps}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ol>
+            </div>
+            
+            {{#if videoUrl}}
+            <div style="text-align: center; margin: 20px 0;">
+                <p><strong>🎥 Watch the Demo</strong></p>
+                <a href="{{videoUrl}}" style="color: #28a745; text-decoration: none;">View Feature Walkthrough →</a>
+            </div>
+            {{/if}}
+            
+            {{#if targetAudience}}
+            <h3>👥 Perfect for:</h3>
+            <ul>
+                {{#each targetAudience}}
+                <li>{{this}}</li>
+                {{/each}}
+            </ul>
+            {{/if}}
+            
+            {{#if limitations}}
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>⚠️ Important Notes</h4>
+                <ul>
+                    {{#each limitations}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                </ul>
+            </div>
+            {{/if}}
+            
+            {{#if feedback}}
+            <h3>💬 We Want Your Feedback!</h3>
+            <p>{{feedback.message}}</p>
+            {{#if feedback.surveyUrl}}
+            <p><a href="{{feedback.surveyUrl}}" style="color: #28a745; text-decoration: none;">Take Our Quick Survey →</a></p>
+            {{/if}}
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{featureUrl}}" class="cta-button">Try {{featureName}} Now</a>
+            </div>
+            
+            <p>We're constantly working to improve NairaGig and make it the best platform for freelancers and clients in Nigeria. Thank you for being part of our journey!</p>
+            
+            <p>Best regards,<br>The NairaGig Product Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p><a href="{{helpUrl}}" style="color: #666;">Need Help?</a> | <a href="{{feedbackUrl}}" style="color: #666;">Send Feedback</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -2,8 +2,56 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
+import { notificationService } from '../services/notification.service';
+import { emailService } from '@/services/email.service';
 
 export class JobController {
+  async getPublicJobs(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { page = 1, limit = 10, category, budgetMin, budgetMax, experienceLevel, status = 'OPEN' } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const where: any = { status, visibility: 'PUBLIC' };
+      if (category) where.categoryId = category;
+      if (experienceLevel) where.experienceLevel = experienceLevel;
+      if (budgetMin || budgetMax) {
+        where.OR = [
+          { budgetType: 'FIXED', budgetMin: { gte: Number(budgetMin), lte: Number(budgetMax) } },
+          { budgetType: 'HOURLY', budgetMin: { gte: Number(budgetMin), lte: Number(budgetMax) } }
+        ];
+      }
+
+      const [jobs, total] = await Promise.all([
+        prisma.job.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          include: {
+            client: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
+            category: true,
+            _count: { select: { applications: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.job.count({ where })
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          jobs,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            pages: Math.ceil(total / Number(limit))
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   async getJobs(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;
@@ -193,6 +241,18 @@ export class JobController {
       });
 
       logger.info(`Job created: ${job.id} by user: ${userId}`);
+      
+      // Send notification to all freelancers if job is published (status is OPEN)
+      if (job.status === 'OPEN') {
+        try {
+          await notificationService.notifyNewJob(job.id);
+          logger.info(`Job notification sent for job: ${job.id}`);
+        } catch (notificationError) {
+          logger.error(`Failed to send job notification for job: ${job.id}`, notificationError);
+          // Don't fail the job creation if notification fails
+        }
+      }
+      
       res.status(201).json({ success: true, data: job });
     } catch (error) {
       next(error);
@@ -285,7 +345,10 @@ export class JobController {
       }
 
       // Check if job exists and is open
-      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
       if (!job) {
         throw ApiError.notFound('Job not found');
       }
@@ -301,6 +364,9 @@ export class JobController {
       if (existingApplication) {
         throw ApiError.badRequest('Already applied to this job');
       }
+
+      // Get freelancer info
+      const freelancer = await prisma.user.findUnique({ where: { id: userId } });
 
       // Convert proposedTimeline to number if it's a string
       let timelineValue = null;
@@ -334,6 +400,16 @@ export class JobController {
         where: { id: jobId },
         data: { applicationCount: { increment: 1 } }
       });
+
+      // Send job application received email to client
+      if (job.client && freelancer) {
+        await emailService.sendJobApplicationReceived(
+          job.client.email!,
+          job.client.firstName,
+          job.title,
+          `${freelancer.firstName} ${freelancer.lastName}`
+        );
+      }
 
       res.status(201).json({ success: true, data: application });
     } catch (error) {
@@ -376,20 +452,55 @@ export class JobController {
     try {
       const userId = (req.user as any)?.id;
       const { jobId, applicationId } = req.params;
+      const { status, notes } = req.body;
 
-      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
       if (!job) throw ApiError.notFound('Job not found');
       if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
 
-      const application = await prisma.jobApplication.update({
+      const application = await prisma.jobApplication.findUnique({
         where: { id: applicationId },
-        data: req.body,
+        include: { freelancer: true }
+      });
+      if (!application) throw ApiError.notFound('Application not found');
+
+      const updatedApplication = await prisma.jobApplication.update({
+        where: { id: applicationId },
+        data: { status, clientFeedback: notes },
         include: {
-          freelancer: { select: { id: true, firstName: true, lastName: true } }
+          freelancer: { select: { id: true, firstName: true, lastName: true, email: true } }
         }
       });
 
-      res.json({ success: true, data: application });
+      // Send job application status email to freelancer
+      if (status && application.freelancer) {
+        const statusData: any = {
+          clientName: `${job.client.firstName} ${job.client.lastName}`,
+          jobUrl: `${process.env.FRONTEND_URL}/jobs/${jobId}`,
+          applicationDate: application.submittedAt.toLocaleDateString()
+        };
+
+        if (status === 'ACCEPTED') {
+          statusData.nextSteps = 'The client will contact you soon to discuss project details.';
+          statusData.projectStartDate = 'To be confirmed';
+        } else if (status === 'REJECTED') {
+          statusData.rejectionReason = notes || 'Your application was not selected for this project.';
+          statusData.feedback = 'Keep applying to similar projects to increase your chances.';
+        }
+
+        await emailService.sendJobApplicationStatus(
+          application.freelancer.email!,
+          application.freelancer.firstName,
+          job.title,
+          status,
+          statusData
+        );
+      }
+
+      res.json({ success: true, data: updatedApplication });
     } catch (error) {
       next(error);
     }
@@ -401,9 +512,14 @@ export class JobController {
       const { jobId } = req.params;
       const { question } = req.body;
 
-      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
       if (!job) throw ApiError.notFound('Job not found');
       if (!job.allowQuestions) throw ApiError.badRequest('Questions not allowed for this job');
+
+      const freelancer = await prisma.user.findUnique({ where: { id: userId } });
 
       const jobQuestion = await prisma.jobQuestion.create({
         data: {
@@ -415,6 +531,21 @@ export class JobController {
           freelancer: { select: { id: true, firstName: true, lastName: true } }
         }
       });
+
+      // Send job question received email to client
+      if (job.client && freelancer) {
+        await emailService.sendJobQuestionReceived(
+          job.client.email!,
+          job.client.firstName,
+          {
+            jobTitle: job.title,
+            questionText: question,
+            freelancerName: `${freelancer.firstName} ${freelancer.lastName}`,
+            questionDate: new Date().toLocaleDateString(),
+            isPublic: true
+          }
+        );
+      }
 
       res.status(201).json({ success: true, data: jobQuestion });
     } catch (error) {
@@ -534,10 +665,16 @@ export class JobController {
       const userId = (req.user as any)?.id;
       const { jobId, freelancerId } = req.body;
 
-      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
       if (!job) throw ApiError.notFound('Job not found');
       if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
       if (job.awardedTo) throw ApiError.badRequest('Job already awarded');
+
+      const freelancer = await prisma.user.findUnique({ where: { id: freelancerId } });
+      if (!freelancer) throw ApiError.notFound('Freelancer not found');
 
       // Award job and create project
       const [updatedJob, project] = await prisma.$transaction(async (tx) => {
@@ -580,7 +717,221 @@ export class JobController {
         return [awardedJob, newProject];
       });
 
+      // Send job awarded email to freelancer
+      await emailService.sendJobAwarded(
+        freelancer.email!,
+        freelancer.firstName,
+        job.title,
+        (job.budgetMin || 0).toString(),
+        `${job.client.firstName} ${job.client.lastName}`
+      );
+
       res.json({ success: true, data: { job: updatedJob, project } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bookmarkJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { id: jobId } = req.params;
+
+      if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+      const job = await prisma.job.findUnique({ where: { id: jobId } });
+      if (!job) throw ApiError.notFound('Job not found');
+
+      const existingBookmark = await prisma.jobBookmark.findUnique({
+        where: { userId_jobId: { userId, jobId } }
+      });
+
+      if (existingBookmark) {
+        throw ApiError.badRequest('Job already bookmarked');
+      }
+
+      const bookmark = await prisma.jobBookmark.create({
+        data: { userId, jobId }
+      });
+
+      res.status(201).json({ success: true, data: bookmark });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async unbookmarkJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { id: jobId } = req.params;
+
+      if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+      const bookmark = await prisma.jobBookmark.findUnique({
+        where: { userId_jobId: { userId, jobId } }
+      });
+
+      if (!bookmark) {
+        throw ApiError.notFound('Bookmark not found');
+      }
+
+      await prisma.jobBookmark.delete({
+        where: { userId_jobId: { userId, jobId } }
+      });
+
+      res.json({ success: true, message: 'Job unbookmarked successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBookmarkedJobs(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { page = 1, limit = 10 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+      const [bookmarks, total] = await Promise.all([
+        prisma.jobBookmark.findMany({
+          where: { userId },
+          skip,
+          take: Number(limit),
+          include: {
+            job: {
+              include: {
+                client: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
+                category: true,
+                _count: { select: { applications: true } }
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.jobBookmark.count({ where: { userId } })
+      ]);
+
+      const jobs = bookmarks.map(bookmark => ({
+        ...bookmark.job,
+        bookmarkedAt: bookmark.createdAt
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          jobs,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            pages: Math.ceil(total / Number(limit))
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancelJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { id: jobId } = req.params;
+      const { reason } = req.body;
+
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
+      if (!job) throw ApiError.notFound('Job not found');
+      if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
+
+      let freelancer = null;
+      if (job.awardedTo) {
+        freelancer = await prisma.user.findUnique({ where: { id: job.awardedTo } });
+      }
+
+      const updatedJob = await prisma.job.update({
+        where: { id: jobId },
+        data: { 
+          status: 'CANCELLED'
+        }
+      });
+
+      const cancellationData = {
+        jobTitle: job.title,
+        jobCategory: job.categoryId || 'General',
+        jobBudget: (job.budgetMin || 0).toString(),
+        cancellationReason: reason || 'No reason provided',
+        cancellationDate: new Date().toLocaleDateString()
+      };
+
+      if (freelancer) {
+        await emailService.sendJobCancelled(
+          freelancer.email!,
+          freelancer.firstName,
+          { ...cancellationData, isFreelancer: true }
+        );
+      }
+
+      await emailService.sendJobCancelled(
+        job.client.email!,
+        job.client.firstName,
+        { ...cancellationData, isClient: true }
+      );
+
+      res.json({ success: true, data: updatedJob });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeJob(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      const { id: jobId } = req.params;
+      const { completionNotes } = req.body;
+
+      const job = await prisma.job.findUnique({ 
+        where: { id: jobId },
+        include: { client: true }
+      });
+      if (!job) throw ApiError.notFound('Job not found');
+      if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
+      if (!job.awardedTo) throw ApiError.badRequest('Job was not awarded to anyone');
+
+      const freelancer = await prisma.user.findUnique({ where: { id: job.awardedTo } });
+      if (!freelancer) throw ApiError.notFound('Freelancer not found');
+
+      const updatedJob = await prisma.job.update({
+        where: { id: jobId },
+        data: { 
+          status: 'COMPLETED',
+          completedAt: new Date()
+        }
+      });
+
+      const projectData = {
+        projectTitle: job.title,
+        completionDate: new Date().toLocaleDateString(),
+        clientName: `${job.client.firstName} ${job.client.lastName}`,
+        freelancerName: `${freelancer.firstName} ${freelancer.lastName}`,
+        totalValue: (job.budgetMin || 0).toString(),
+        projectDuration: 'Completed'
+      };
+
+      await emailService.sendJobCompleted(
+        freelancer.email!,
+        { ...projectData, isFreelancer: true }
+      );
+
+      await emailService.sendJobCompleted(
+        job.client.email!,
+        { ...projectData, isClient: true }
+      );
+
+      res.json({ success: true, data: updatedJob });
     } catch (error) {
       next(error);
     }

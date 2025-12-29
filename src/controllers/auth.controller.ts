@@ -4,6 +4,7 @@ import { prisma } from '@/config/database';
 import { config } from '@/config/config';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
+import { emailService } from '@/services/email.service';
 
 export class AuthController {
   async oauthCallback(req: Request, res: Response, next: NextFunction) {
@@ -18,13 +19,57 @@ export class AuthController {
       const accessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
       const refreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
 
+      const isNewUser = user.createdAt && (new Date().getTime() - new Date(user.createdAt).getTime()) < 60000;
+      
       await prisma.user.update({
         where: { id: user.id },
         data: { lastLoginAt: new Date() }
       });
 
       // Record login session and history
-      await this.recordLoginSession(req, user.id, 'SUCCESS');
+      const loginData = await this.recordLoginSession(req, user.id, 'SUCCESS');
+
+      // Send welcome email for new users
+      if (isNewUser) {
+        await emailService.sendWelcomeEmail(
+          user.firstName,
+          user.lastName,
+          user.email,
+          user.authProvider || 'google',
+          user.role
+        );
+      } else {
+        // Check if 2FA is enabled
+        if (user.twoFactorAuth) {
+          // Generate and send 2FA code
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+          await prisma.twoFactorCode.create({
+            data: {
+              userId: user.id,
+              code,
+              expiresAt
+            }
+          });
+
+          await emailService.sendTwoFactorCode(
+            user.firstName,
+            user.email,
+            code,
+            new Date().toLocaleString(),
+            loginData?.location || 'Unknown',
+            loginData?.deviceInfo || 'Unknown device'
+          );
+
+          // Return pending 2FA response
+          const callbackUrl = `http://localhost:3001/auth/callback?success=false&requires2fa=true&email=${encodeURIComponent(user.email)}`;
+          return res.redirect(callbackUrl);
+        }
+
+        // Send login alert for existing users on new device/location
+        await this.checkAndSendLoginAlert(user, loginData);
+      }
 
       logger.info(`OAuth login successful: ${user.email}`);
 
@@ -50,14 +95,14 @@ export class AuthController {
 
   async generateOAuthToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = req.body;
+      const { email } = req.body;
 
-      if (!userId) {
-        throw ApiError.badRequest('User ID required');
+      if (!email) {
+        throw ApiError.badRequest('Email is required');
       }
 
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { email },
         select: {
           id: true,
           email: true,
@@ -88,6 +133,55 @@ export class AuthController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  async verifyToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      let token = req.header('Authorization')?.replace('Bearer ', '');
+      
+      if (!token) {
+        token = req.cookies?.access_token;
+      }
+
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'No token provided'
+        });
+      }
+
+      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
+      
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          status: true,
+          profileImageUrl: true
+        }
+      });
+
+      if (!user || user.status !== 'ACTIVE') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid or inactive user'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: { user, valid: true }
+      });
+    } catch (error) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
     }
   }
 
@@ -145,10 +239,18 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
+      let refreshToken = req.body.refreshToken;
+      
+      // Try to get refresh token from httpOnly cookie if not in body
+      if (!refreshToken) {
+        refreshToken = req.cookies?.refresh_token;
+      }
 
       if (!refreshToken) {
-        throw ApiError.unauthorized('Refresh token required');
+        return res.status(401).json({
+          success: false,
+          message: 'Refresh token required'
+        });
       }
 
       const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret as string) as { userId: string };
@@ -166,12 +268,30 @@ export class AuthController {
       });
 
       if (!user) {
-        throw ApiError.unauthorized('Invalid refresh token');
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid refresh token'
+        });
       }
 
       const payload = { userId: user.id };
       const newAccessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
       const newRefreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
+
+      // Set new tokens as httpOnly cookies
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      res.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
 
       res.json({
         success: true,
@@ -181,6 +301,48 @@ export class AuthController {
           user
         }
       });
+    } catch (error) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid refresh token'
+      });
+    }
+  }
+
+  async setTokens(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { accessToken, refreshToken, user } = req.body;
+
+      if (!accessToken || !refreshToken || !user) {
+        throw ApiError.badRequest('Missing required token data');
+      }
+
+      // Set httpOnly cookies
+      res.cookie('access_token', accessToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      res.json({ success: true, message: 'Tokens set successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async clearTokens(req: Request, res: Response, next: NextFunction) {
+    try {
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+      res.json({ success: true, message: 'Tokens cleared successfully' });
     } catch (error) {
       next(error);
     }
@@ -228,8 +390,68 @@ export class AuthController {
           }
         });
       }
+
+      return { deviceInfo, location, ipAddress, userAgent };
     } catch (error) {
       logger.error('Failed to record login session:', error);
+      return null;
+    }
+  }
+
+  private async checkAndSendLoginAlert(user: any, loginData: any) {
+    if (!loginData) return;
+
+    try {
+      // Check if user has login alerts enabled
+      const userSettings = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { loginAlerts: true }
+      });
+
+      if (!userSettings?.loginAlerts) {
+        logger.info(`Login alerts disabled for user ${user.email}`);
+        return; // User has disabled login alerts
+      }
+
+      // Check if this is a new device/location
+      const recentLogins = await prisma.loginHistory.findMany({
+        where: {
+          userId: user.id,
+          status: 'SUCCESS',
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days (reduced from 30)
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      });
+
+      logger.info(`Checking login alert for ${user.email}: ${recentLogins.length} recent logins`);
+
+      // More lenient device detection - check if similar device/location exists
+      const isNewDevice = recentLogins.length === 0 || !recentLogins.some(login => {
+        const deviceMatch = login.deviceInfo?.includes(loginData.deviceInfo?.split(' ')[0]) || 
+                           loginData.deviceInfo?.includes(login.deviceInfo?.split(' ')[0]);
+        const locationMatch = login.location === loginData.location;
+        return deviceMatch && locationMatch;
+      });
+
+      logger.info(`New device detected for ${user.email}: ${isNewDevice}`);
+
+      if (isNewDevice) {
+        logger.info(`Sending login alert to ${user.email}`);
+        await emailService.sendLoginAlert(
+          user.firstName,
+          user.email,
+          new Date().toLocaleString(),
+          loginData.location,
+          loginData.deviceInfo,
+          loginData.ipAddress,
+          user.authProvider || 'google'
+        );
+      }
+    } catch (error) {
+      logger.error('Failed to send login alert:', error);
     }
   }
 

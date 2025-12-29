@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '@/types/auth';
+import { emailService } from '@/services/email.service';
+import { logger } from '@/utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -55,6 +57,19 @@ export class SettingsController {
     try {
       const userId = req.user?.id;
       const settings = req.body;
+      const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+
+      // Check for security-sensitive changes
+      const securityChanges = [];
+      if (settings.twoFactorAuth !== undefined && settings.twoFactorAuth !== currentUser?.twoFactorAuth) {
+        securityChanges.push(settings.twoFactorAuth ? '2FA enabled' : '2FA disabled');
+      }
+      if (settings.loginAlerts !== undefined && settings.loginAlerts !== currentUser?.loginAlerts) {
+        securityChanges.push(settings.loginAlerts ? 'Login alerts enabled' : 'Login alerts disabled');
+      }
+      if (settings.profileVisibility !== undefined && settings.profileVisibility !== currentUser?.profileVisibility) {
+        securityChanges.push(`Profile visibility changed to ${settings.profileVisibility}`);
+      }
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -76,8 +91,30 @@ export class SettingsController {
           compactMode: true,
           showOnlineStatus: true,
           allowSearchEngineIndexing: true,
+          firstName: true,
+          email: true
         },
       });
+
+      // Send security alert for sensitive changes
+      if (securityChanges.length > 0 && currentUser) {
+        await emailService.sendSecurityAlertAdvanced(
+          currentUser.email!,
+          {
+            userName: currentUser.firstName,
+            alertType: 'Account Settings Changed',
+            eventDateTime: new Date().toLocaleString(),
+            location: 'Account Settings',
+            deviceInfo: req.headers['user-agent'] || 'Unknown device',
+            ipAddress: req.ip || 'Unknown IP',
+            eventDescription: `The following security settings were changed: ${securityChanges.join(', ')}`,
+            riskLevel: 'Low',
+            riskColor: '#28a745',
+            actionRequired: false,
+            securityUrl: `${process.env.FRONTEND_URL}/settings/security`
+          }
+        );
+      }
 
       res.json({
         success: true,
@@ -85,6 +122,7 @@ export class SettingsController {
         message: 'Settings updated successfully',
       });
     } catch (error) {
+      logger.error('Settings update error:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update settings',

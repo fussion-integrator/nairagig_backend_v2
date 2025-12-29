@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
+import { emailService } from '@/services/email.service';
 
 export class VerificationController {
   async submitVerification(req: Request, res: Response, next: NextFunction) {
@@ -37,23 +38,40 @@ export class VerificationController {
         throw ApiError.badRequest('You already have a verification request in progress');
       }
 
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+
       const verification = await prisma.userVerification.create({
         data: {
           userId,
           documentType,
           documentNumber,
-          firstName,
-          lastName,
-          dateOfBirth: new Date(dateOfBirth),
-          address,
-          state,
-          frontImageUrl,
-          backImageUrl,
-          selfieImageUrl,
-          status: 'PENDING',
-          submittedAt: new Date()
+          documentImages: [frontImageUrl, backImageUrl].filter(Boolean),
+          selfieImage: selfieImageUrl,
+          status: 'PENDING'
         }
       });
+
+      // Send verification status email
+      if (user) {
+        await emailService.sendVerificationStatus(
+          user.email!,
+          {
+            userName: user.firstName,
+            verificationStatus: 'Under Review',
+            verificationType: documentType,
+            submissionDate: new Date().toLocaleDateString(),
+            reviewDate: 'Pending',
+            referenceNumber: verification.id,
+            isApproved: false,
+            isRejected: false,
+            isPending: true,
+            documentsReceived: 'All required documents',
+            expectedCompletion: '3-5 business days',
+            currentStage: 'Document verification',
+            verificationUrl: `${process.env.FRONTEND_URL}/verification/status`
+          }
+        );
+      }
 
       // Create notification for admin
       await prisma.notification.create({
@@ -87,7 +105,7 @@ export class VerificationController {
 
       const verification = await prisma.userVerification.findFirst({
         where: { userId },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { submittedAt: 'desc' }
       });
 
       res.json({
@@ -124,7 +142,7 @@ export class VerificationController {
               }
             }
           },
-          orderBy: { createdAt: 'desc' }
+          orderBy: { submittedAt: 'desc' }
         }),
         prisma.userVerification.count({ where })
       ]);
@@ -166,7 +184,7 @@ export class VerificationController {
         data: {
           status: 'APPROVED',
           reviewedAt: new Date(),
-          reviewNotes: notes,
+          notes: notes,
           reviewedBy: (req as any).user?.id
         }
       });
@@ -179,6 +197,23 @@ export class VerificationController {
           isVerified: true
         }
       });
+
+      // Send verification approved email
+      await emailService.sendVerificationStatus(
+        verification.user.email!,
+        {
+          userName: verification.user.firstName,
+          verificationStatus: 'Approved',
+          verificationType: verification.documentType,
+          submissionDate: verification.submittedAt.toLocaleDateString(),
+          reviewDate: new Date().toLocaleDateString(),
+          referenceNumber: verification.id,
+          isApproved: true,
+          isRejected: false,
+          isPending: false,
+          verificationUrl: `${process.env.FRONTEND_URL}/verification/status`
+        }
+      );
 
       // Create notification for user
       await prisma.notification.create({
@@ -221,11 +256,31 @@ export class VerificationController {
         data: {
           status: 'REJECTED',
           reviewedAt: new Date(),
-          reviewNotes: notes,
+          notes: notes,
           rejectionReason: reason,
           reviewedBy: (req as any).user?.id
         }
       });
+
+      // Send verification rejected email
+      await emailService.sendVerificationStatus(
+        verification.user.email!,
+        {
+          userName: verification.user.firstName,
+          verificationStatus: 'Rejected',
+          verificationType: verification.documentType,
+          submissionDate: verification.submittedAt.toLocaleDateString(),
+          reviewDate: new Date().toLocaleDateString(),
+          referenceNumber: verification.id,
+          isApproved: false,
+          isRejected: true,
+          isPending: false,
+          rejectionReason: reason,
+          additionalNotes: notes,
+          verificationUrl: `${process.env.FRONTEND_URL}/verification/status`,
+          resubmitUrl: `${process.env.FRONTEND_URL}/verification/submit`
+        }
+      );
 
       // Create notification for user
       await prisma.notification.create({
@@ -267,8 +322,7 @@ export class VerificationController {
         data: {
           status: 'ADDITIONAL_DOCS_REQUIRED',
           reviewedAt: new Date(),
-          reviewNotes: notes,
-          requiredDocuments,
+          notes: notes,
           reviewedBy: (req as any).user?.id
         }
       });

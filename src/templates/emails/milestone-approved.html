@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milestone Approved - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .milestone-card { background: #f8fff8; border-left: 4px solid #28a745; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .payment-info { background: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .next-steps { background: #fff; border: 1px solid #e1e5e9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .secondary-button { display: inline-block; background: #6c757d; color: white; padding: 10px 25px; text-decoration: none; border-radius: 20px; margin: 10px 5px; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .success-icon { font-size: 48px; color: #28a745; text-align: center; margin: 20px 0; }
+        .feedback-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Milestone Approved!</h1>
+            <p>{{#if isFreelancer}}Payment is being processed{{else}}Milestone has been approved{{/if}}</p>
+        </div>
+        
+        <div class="content">
+            <div class="success-icon">🎉</div>
+            
+            <p>Hi {{recipientName}},</p>
+            
+            {{#if isFreelancer}}
+            <p>Congratulations! Your milestone for project <strong>{{projectTitle}}</strong> has been approved by {{clientName}}.</p>
+            {{else}}
+            <p>You have successfully approved the milestone submitted by {{freelancerName}} for project <strong>{{projectTitle}}</strong>.</p>
+            {{/if}}
+            
+            <div class="milestone-card">
+                <h3>✅ Approved Milestone</h3>
+                <p><strong>Milestone:</strong> {{milestoneTitle}}</p>
+                <p><strong>Project:</strong> {{projectTitle}}</p>
+                <p><strong>Amount:</strong> ₦{{milestoneAmount}}</p>
+                <p><strong>Approved:</strong> {{approvalDate}}</p>
+                {{#if approvalNotes}}
+                <p><strong>Approval Notes:</strong> {{approvalNotes}}</p>
+                {{/if}}
+            </div>
+            
+            {{#if clientFeedback}}
+            <div class="feedback-section">
+                <h4>💬 Client Feedback</h4>
+                <p><em>"{{clientFeedback}}"</em></p>
+            </div>
+            {{/if}}
+            
+            {{#if isFreelancer}}
+            <div class="payment-info">
+                <h3>💰 Payment Information</h3>
+                <p><strong>Amount:</strong> ₦{{paymentAmount}}</p>
+                <p><strong>Processing Fee:</strong> ₦{{processingFee}}</p>
+                <p><strong>Net Amount:</strong> ₦{{netAmount}}</p>
+                <p><strong>Expected in Account:</strong> {{paymentETA}}</p>
+                <p><small>Payment will be transferred to your registered bank account within 1-3 business days.</small></p>
+            </div>
+            
+            <h3>🎯 What's next?</h3>
+            <ul>
+                <li>Payment is being processed and will arrive soon</li>
+                {{#if hasNextMilestone}}
+                <li>Continue working on the next milestone</li>
+                {{else}}
+                <li>Project is now complete - well done!</li>
+                {{/if}}
+                <li>Consider asking for a review from your client</li>
+                <li>Update your portfolio with this successful project</li>
+            </ul>
+            {{else}}
+            <div class="payment-info">
+                <h3>💳 Payment Processed</h3>
+                <p><strong>Amount Paid:</strong> ₦{{paymentAmount}}</p>
+                <p><strong>Payment Method:</strong> {{paymentMethod}}</p>
+                <p><strong>Transaction ID:</strong> {{transactionId}}</p>
+                <p>Payment has been released to the freelancer automatically.</p>
+            </div>
+            
+            <h3>📈 Project Progress</h3>
+            <ul>
+                <li>Milestone successfully completed and approved</li>
+                {{#if hasNextMilestone}}
+                <li>Next milestone: {{nextMilestoneTitle}}</li>
+                <li>Expected completion: {{nextMilestoneDue}}</li>
+                {{else}}
+                <li>🎉 Project is now complete!</li>
+                <li>Consider leaving a review for your freelancer</li>
+                {{/if}}
+            </ul>
+            {{/if}}
+            
+            {{#if hasNextMilestone}}
+            <div class="next-steps">
+                <h4>📋 Next Milestone</h4>
+                <p><strong>{{nextMilestoneTitle}}</strong></p>
+                <p>Due: {{nextMilestoneDue}} | Amount: ₦{{nextMilestoneAmount}}</p>
+            </div>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{projectUrl}}" class="cta-button">View Project</a>
+                {{#if isFreelancer}}
+                <br><a href="{{portfolioUrl}}" class="secondary-button">Update Portfolio</a>
+                {{else}}
+                <br><a href="{{reviewUrl}}" class="secondary-button">Leave Review</a>
+                {{/if}}
+            </div>
+            
+            <p>Thank you for using NairaGig to power your {{#if isFreelancer}}freelancing{{else}}business{{/if}} success!</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>Building Nigeria's digital economy, one gig at a time.</p>
+        </div>
+    </div>
+</body>
+</html>

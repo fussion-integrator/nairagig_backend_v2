@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congratulations! You Won! - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%); color: #333; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .winner-card { background: #fff8dc; border-left: 4px solid #ffd700; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .prize-card { background: #f0f8ff; border: 2px solid #4169e1; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center; }
+        .achievement { background: #f8fff8; border: 1px solid #90ee90; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .cta-button { display: inline-block; background: #ffd700; color: #333; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: bold; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .trophy-icon { font-size: 64px; color: #ffd700; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 CONGRATULATIONS!</h1>
+            <p>You're a winner!</p>
+        </div>
+        
+        <div class="content">
+            <div class="trophy-icon">🥇</div>
+            
+            <p>Hi {{winnerName}},</p>
+            
+            <p>🎉 <strong>AMAZING NEWS!</strong> You've won <strong>{{position}}</strong> place in the <strong>{{challengeTitle}}</strong> challenge!</p>
+            
+            <div class="winner-card">
+                <h3>🏆 Your Victory</h3>
+                <p><strong>Challenge:</strong> {{challengeTitle}}</p>
+                <p><strong>Your Position:</strong> {{position}}</p>
+                <p><strong>Your Score:</strong> {{finalScore}}/100</p>
+                <p><strong>Total Participants:</strong> {{totalParticipants}}</p>
+                <p><strong>Announcement Date:</strong> {{announcementDate}}</p>
+            </div>
+            
+            <div class="prize-card">
+                <h2>💰 Your Prize</h2>
+                <h1 style="color: #4169e1; margin: 10px 0;">₦{{prizeAmount}}</h1>
+                <p>Prize will be credited to your account within 24 hours</p>
+            </div>
+            
+            {{#if judgesFeedback}}
+            <div class="achievement">
+                <h4>👨‍⚖️ Judges' Feedback</h4>
+                <p><em>"{{judgesFeedback}}"</em></p>
+            </div>
+            {{/if}}
+            
+            <h3>🎯 Your Outstanding Performance</h3>
+            <ul>
+                <li><strong>Creativity:</strong> {{creativityScore}}/25</li>
+                <li><strong>Technical Skill:</strong> {{technicalScore}}/25</li>
+                <li><strong>Innovation:</strong> {{innovationScore}}/25</li>
+                <li><strong>Execution:</strong> {{executionScore}}/25</li>
+            </ul>
+            
+            <h3>🚀 What's Next?</h3>
+            <ul>
+                <li>Your prize money will be credited automatically</li>
+                <li>You'll receive a winner's badge on your profile</li>
+                <li>Consider showcasing this win in your portfolio</li>
+                <li>Look out for exclusive invitations to premium challenges</li>
+                <li>Share your success with the community!</li>
+            </ul>
+            
+            {{#if nextChallenge}}
+            <div style="background: #e6f3ff; border: 1px solid #b3d9ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>🔥 Upcoming Challenge</h4>
+                <p><strong>{{nextChallenge.title}}</strong></p>
+                <p>Prize: ₦{{nextChallenge.prize}} | Starts: {{nextChallenge.startDate}}</p>
+            </div>
+            {{/if}}
+            
+            <div style="text-align: center;">
+                <a href="{{profileUrl}}" class="cta-button">View Your Profile</a>
+            </div>
+            
+            <p>You should be incredibly proud of this achievement. Your hard work and talent have truly paid off!</p>
+            
+            <p>Congratulations once again!</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+            <p>🏆 Building Nigeria's digital economy, one challenge at a time.</p>
+        </div>
+    </div>
+</body>
+</html>

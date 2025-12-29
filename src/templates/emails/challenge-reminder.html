@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge Deadline Reminder - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .reminder-card { background: #fff3cd; border-left: 4px solid #f39c12; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .countdown { background: #dc3545; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .warning-icon { font-size: 48px; color: #f39c12; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ Deadline Reminder</h1>
+            <p>Time is running out!</p>
+        </div>
+        
+        <div class="content">
+            <div class="warning-icon">⚠️</div>
+            
+            <p>Hi {{participantName}},</p>
+            
+            <p>This is a friendly reminder that the submission deadline for <strong>{{challengeTitle}}</strong> is approaching fast!</p>
+            
+            <div class="countdown">
+                <h2>{{timeRemaining}}</h2>
+                <p>Until submission deadline</p>
+            </div>
+            
+            <div class="reminder-card">
+                <h3>📋 Challenge Summary</h3>
+                <p><strong>Challenge:</strong> {{challengeTitle}}</p>
+                <p><strong>Deadline:</strong> {{submissionDeadline}}</p>
+                <p><strong>Prize Pool:</strong> ₦{{prizePool}}</p>
+                <p><strong>Your Status:</strong> {{#if hasSubmitted}}✅ Submitted{{else}}❌ Not Submitted{{/if}}</p>
+            </div>
+            
+            {{#unless hasSubmitted}}
+            <h3>🚨 Action Required</h3>
+            <ul>
+                <li>Complete your submission immediately</li>
+                <li>Review all requirements before submitting</li>
+                <li>Test your solution thoroughly</li>
+                <li>Submit before the deadline expires</li>
+            </ul>
+            {{else}}
+            <h3>✅ You're All Set!</h3>
+            <p>Great job! You've already submitted your entry. You can still update it before the deadline if needed.</p>
+            {{/unless}}
+            
+            <div style="text-align: center;">
+                <a href="{{challengeUrl}}" class="cta-button">{{#if hasSubmitted}}View Submission{{else}}Submit Now{{/if}}</a>
+            </div>
+            
+            <p>Don't miss out on this opportunity!</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Job Question - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #06b6d4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .question-card { background: #f0f9ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #06b6d4; }
+        .job-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .freelancer-info { background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 20px 0; }
+        .response-tips { background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #e0f7fa; margin-top: 10px;">❓ New Job Question</p>
+        </div>
+        
+        <div class="content">
+            <h1 style="color: #1f2937; margin-bottom: 20px;">You Have a New Question!</h1>
+            
+            <p style="margin-bottom: 25px;">Hi {{clientName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                A freelancer has asked a question about your job posting. 
+                Responding promptly helps attract quality applicants and shows you're an engaged client.
+            </p>
+            
+            <div class="question-card">
+                <h3 style="color: #0891b2; margin-bottom: 15px;">💬 Question Details</h3>
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="color: #374151; margin-bottom: 10px;">Question:</h4>
+                    <p style="color: #6b7280; font-style: italic; line-height: 1.6;">
+                        "{{questionText}}"
+                    </p>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; color: #0891b2; font-size: 14px;">
+                    <span>Asked {{questionDate}}</span>
+                    <span>{{#if isPublic}}Public Question{{else}}Private Question{{/if}}</span>
+                </div>
+            </div>
+            
+            <div class="freelancer-info">
+                <h3 style="color: #16a34a; margin-bottom: 15px;">👤 Asked by</h3>
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="width: 50px; height: 50px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                        <span style="color: white; font-weight: bold;">{{freelancerInitials}}</span>
+                    </div>
+                    <div>
+                        <h4 style="color: #374151; margin-bottom: 5px;">{{freelancerName}}</h4>
+                        <p style="color: #6b7280;">{{freelancerTitle}}</p>
+                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                            <span style="color: #f59e0b;">⭐</span>
+                            <span style="color: #374151; margin-left: 5px;">{{freelancerRating}} ({{reviewCount}} reviews)</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
+                    <div style="background: white; padding: 10px; border-radius: 6px; text-align: center;">
+                        <div style="color: #22c55e; font-weight: bold;">{{completedJobs}}</div>
+                        <div class="text-muted">Jobs Done</div>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; text-align: center;">
+                        <div style="color: #22c55e; font-weight: bold;">{{successRate}}%</div>
+                        <div class="text-muted">Success Rate</div>
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 6px; text-align: center;">
+                        <div style="color: #22c55e; font-weight: bold;">{{responseTime}}</div>
+                        <div class="text-muted">Response Time</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="job-info">
+                <h3 style="color: #374151; margin-bottom: 15px;">📋 Your Job Posting</h3>
+                <h4 style="color: #1f2937; margin-bottom: 10px;">{{jobTitle}}</h4>
+                <p style="color: #6b7280; margin-bottom: 15px;">{{jobCategory}} • Budget: {{jobBudget}}</p>
+                <p style="color: #6b7280; font-size: 14px;">
+                    Posted {{jobPostedDate}} • {{totalApplications}} applications • {{totalQuestions}} questions
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="{{answerQuestionUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                    Answer Question
+                </a>
+                <a href="{{freelancerProfileUrl}}" class="btn" style="background: #6b7280; margin-left: 10px;">
+                    View Profile
+                </a>
+            </div>
+            
+            <div class="response-tips">
+                <h4 style="color: #92400e; margin-bottom: 15px;">💡 Response Tips</h4>
+                <ul style="color: #92400e; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Be specific and detailed</strong> in your answers</li>
+                    <li><strong>Respond within 24 hours</strong> to show you're active</li>
+                    <li><strong>Ask follow-up questions</strong> if you need clarification</li>
+                    <li><strong>Be professional and friendly</strong> in your tone</li>
+                    <li><strong>Consider making answers public</strong> to help other freelancers</li>
+                </ul>
+            </div>
+            
+            {{#if isPublic}}
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                <h4 style="color: #1d4ed8; margin-bottom: 10px;">🌐 Public Question</h4>
+                <p style="color: #1d4ed8;">
+                    This question is public, meaning your answer will be visible to all freelancers viewing your job. 
+                    This is great for addressing common concerns and attracting more quality applicants.
+                </p>
+            </div>
+            {{else}}
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 25px 0;">
+                <h4 style="color: #dc2626; margin-bottom: 10px;">🔒 Private Question</h4>
+                <p style="color: #dc2626;">
+                    This is a private question. Only you and the freelancer who asked it can see the question and your response.
+                </p>
+            </div>
+            {{/if}}
+            
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 25px 0;">
+                <h4 style="color: #16a34a; margin-bottom: 10px;">🎯 Why Questions Are Good</h4>
+                <ul style="color: #16a34a; margin-left: 20px; line-height: 1.8;">
+                    <li>Shows freelancers are seriously considering your project</li>
+                    <li>Helps clarify requirements and reduce misunderstandings</li>
+                    <li>Demonstrates the freelancer's attention to detail</li>
+                    <li>Builds communication before the project starts</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                You have {{pendingQuestions}} pending questions on your job postings. 
+                Check your <a href="{{dashboardUrl}}" style="color: #06b6d4;">dashboard</a> for all questions.
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Happy hiring!<br>
+                <strong>The NairaGig Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/unsubscribe" style="color: #6b7280;">Unsubscribe</a> | 
+                <a href="{{websiteUrl}}/settings" style="color: #6b7280;">Manage Preferences</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

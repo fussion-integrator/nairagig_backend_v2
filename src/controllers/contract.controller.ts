@@ -48,7 +48,7 @@ export class ContractController {
         endDate: contract.endDate?.toISOString().split('T')[0],
         progress: contract.project.progressPercentage || 0,
         terms: contract.terms,
-        milestones: contract.milestones,
+        milestones: [], // Remove this line since milestones don't exist on contract
         isClient: contract.clientId === userId
       }));
 
@@ -133,18 +133,12 @@ export class ContractController {
       const contract = await prisma.contract.create({
         data: {
           projectId,
-          jobId,
           clientId: userId,
           freelancerId,
           title,
           description,
           terms,
-          amount,
-          paymentSchedule: paymentSchedule || 'MILESTONE',
-          startDate: new Date(startDate),
-          endDate: endDate ? new Date(endDate) : null,
-          deliverables: deliverables || [],
-          milestones: milestones || []
+          amount
         },
         include: {
           project: true,

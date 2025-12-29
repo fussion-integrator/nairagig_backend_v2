@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Challenge Alert - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .challenge-card { background: #faf5ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6; }
+        .challenge-meta { display: flex; flex-wrap: wrap; gap: 15px; margin: 15px 0; }
+        .meta-item { background: white; padding: 8px 12px; border-radius: 6px; font-size: 14px; color: #6b7280; }
+        .prize { color: #7c3aed; font-weight: bold; font-size: 18px; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .countdown { background: #fef3c7; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #f3e8ff; margin-top: 10px;">🏆 New Challenge Alert</p>
+        </div>
+        
+        <div class="content">
+            <h1 style="color: #1f2937; margin-bottom: 20px;">New Challenge Available!</h1>
+            
+            <p style="margin-bottom: 20px;">Hi {{firstName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                An exciting new challenge has been launched! Test your skills and compete for amazing prizes.
+            </p>
+            
+            <div class="challenge-card">
+                <h2 style="color: #7c3aed; margin-bottom: 15px; font-size: 24px;">{{challengeTitle}}</h2>
+                
+                <div class="challenge-meta">
+                    <div class="meta-item">
+                        <strong>🏆 Prize Pool:</strong> <span class="prize">{{prizePool}}</span>
+                    </div>
+                    <div class="meta-item">
+                        <strong>📂 Category:</strong> {{category}}
+                    </div>
+                    <div class="meta-item">
+                        <strong>📅 Registration Ends:</strong> {{registrationEnd}}
+                    </div>
+                    <div class="meta-item">
+                        <strong>⏰ Submission Deadline:</strong> {{submissionEnd}}
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h3 style="color: #374151; margin-bottom: 10px;">Challenge Description:</h3>
+                    <p style="color: #6b7280; line-height: 1.6;">{{description}}</p>
+                </div>
+                
+                <div class="countdown">
+                    <p style="color: #92400e; font-weight: bold; margin: 0;">
+                        ⚡ Limited Time Registration - Don't Miss Out!
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 25px;">
+                    <a href="{{challengeUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                        View Challenge & Register
+                    </a>
+                </div>
+            </div>
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 25px 0;">
+                <h3 style="color: #0c4a6e; margin-bottom: 10px;">💡 Why Participate?</h3>
+                <ul style="color: #0369a1; margin-left: 20px;">
+                    <li>Win cash prizes and recognition</li>
+                    <li>Build your portfolio with real projects</li>
+                    <li>Network with other talented freelancers</li>
+                    <li>Gain experience and improve your skills</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                This challenge alert was sent because you have email notifications enabled. 
+                You can manage your notification preferences in your 
+                <a href="{{websiteUrl}}/settings" style="color: #8b5cf6;">account settings</a>.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/unsubscribe" style="color: #6b7280;">Unsubscribe</a> | 
+                <a href="{{websiteUrl}}/settings" style="color: #6b7280;">Manage Preferences</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

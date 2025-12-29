@@ -18,6 +18,8 @@ router.delete('/:id', projectController.deleteProject.bind(projectController));
 router.get('/:id/milestones', projectController.getMilestones.bind(projectController));
 router.post('/:id/milestones', projectController.createMilestone.bind(projectController));
 router.put('/:id/milestones/:milestoneId', projectController.updateMilestone.bind(projectController));
+router.put('/milestones/:milestoneId/submit', projectController.submitMilestone.bind(projectController));
+router.put('/milestones/:milestoneId/approve', projectController.approveMilestone.bind(projectController));
 
 // Progress update route
 router.put('/:id/progress', projectController.updateProgress.bind(projectController));

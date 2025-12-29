@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congratulations! Job Awarded - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-line: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 20px; text-align: center; }
+        .logo { color: white; font-size: 32px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 15px 30px; background: #22c55e; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .celebration-card { background: #f0fdf4; padding: 30px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #22c55e; text-align: center; }
+        .project-details { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 20px 0; }
+        .client-info { background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0; }
+        .next-steps { background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .highlight { color: #16a34a; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎉 Congratulations!</div>
+            <p style="color: #f0fdf4; margin-top: 15px; font-size: 18px;">You've been awarded the job!</p>
+        </div>
+        
+        <div class="content">
+            <div class="celebration-card">
+                <h1 style="color: #16a34a; margin-bottom: 20px; font-size: 28px;">🏆 Job Awarded!</h1>
+                <p style="color: #16a34a; font-size: 18px; margin-bottom: 15px;">
+                    Fantastic news, {{freelancerName}}! The client has selected you for their project.
+                </p>
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                    <div class="highlight">{{jobTitle}}</div>
+                    <p style="color: #6b7280; margin-top: 10px;">Project Value: <span class="highlight">{{agreedBudget}}</span></p>
+                </div>
+            </div>
+            
+            <div class="project-details">
+                <h3 style="color: #374151; margin-bottom: 20px;">📋 Project Details</h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600; width: 30%;">Project:</td>
+                        <td style="padding: 12px 0;">{{jobTitle}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Budget:</td>
+                        <td style="padding: 12px 0; color: #16a34a; font-weight: bold;">{{agreedBudget}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Timeline:</td>
+                        <td style="padding: 12px 0;">{{projectTimeline}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Category:</td>
+                        <td style="padding: 12px 0;">{{jobCategory}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px 0; font-weight: 600;">Start Date:</td>
+                        <td style="padding: 12px 0;">{{startDate}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; font-weight: 600;">Deadline:</td>
+                        <td style="padding: 12px 0;">{{projectDeadline}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="client-info">
+                <h3 style="color: #1d4ed8; margin-bottom: 15px;">👤 Client Information</h3>
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="width: 50px; height: 50px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+                        <span style="color: white; font-weight: bold;">{{clientInitials}}</span>
+                    </div>
+                    <div>
+                        <h4 style="color: #374151; margin-bottom: 5px;">{{clientName}}</h4>
+                        <p style="color: #6b7280;">{{clientCompany}}</p>
+                        <div style="display: flex; align-items: center; margin-top: 5px;">
+                            <span style="color: #f59e0b;">⭐</span>
+                            <span style="color: #374151; margin-left: 5px;">{{clientRating}} • {{clientJobsPosted}} jobs posted</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="color: #1d4ed8; font-size: 14px;">
+                    <strong>Location:</strong> {{clientLocation}}<br>
+                    <strong>Member Since:</strong> {{clientMemberSince}}
+                </p>
+            </div>
+            
+            <div class="next-steps">
+                <h3 style="color: #92400e; margin-bottom: 15px;">🚀 Next Steps</h3>
+                <ol style="color: #92400e; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Accept the project</strong> and review the project details</li>
+                    <li><strong>Message the client</strong> to discuss project specifics</li>
+                    <li><strong>Set up milestones</strong> and payment schedule</li>
+                    <li><strong>Start working</strong> and provide regular updates</li>
+                    <li><strong>Deliver quality work</strong> on time</li>
+                </ol>
+            </div>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="{{projectUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                    Start Project
+                </a>
+                <a href="{{messageClientUrl}}" class="btn" style="background: #3b82f6; margin-left: 10px;">
+                    Message Client
+                </a>
+            </div>
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 25px 0;">
+                <h4 style="color: #0c4a6e; margin-bottom: 10px;">💡 Success Tips</h4>
+                <ul style="color: #0369a1; margin-left: 20px; line-height: 1.8;">
+                    <li>Communicate regularly with your client</li>
+                    <li>Set clear expectations and deliverables</li>
+                    <li>Ask questions if anything is unclear</li>
+                    <li>Deliver work on time and exceed expectations</li>
+                    <li>Request feedback and testimonials upon completion</li>
+                </ul>
+            </div>
+            
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 25px 0;">
+                <h4 style="color: #dc2626; margin-bottom: 10px;">⚠️ Important Reminders</h4>
+                <ul style="color: #dc2626; margin-left: 20px; line-height: 1.8;">
+                    <li>All communication should happen through NairaGig platform</li>
+                    <li>Never share personal contact information</li>
+                    <li>Use our secure payment system for all transactions</li>
+                    <li>Report any suspicious activity immediately</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px;">
+                Congratulations again on winning this project! We're excited to see the amazing work you'll deliver.
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Best of luck with your project!<br>
+                <strong>The NairaGig Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/help/project-management" style="color: #6b7280;">Project Help</a> | 
+                <a href="{{websiteUrl}}/support" style="color: #6b7280;">Get Support</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

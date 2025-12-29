@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
+import { emailService } from '@/services/email.service';
+import { logger } from '@/utils/logger';
 
 export class DisputeController {
   async getDisputes(req: Request, res: Response, next: NextFunction) {
@@ -12,7 +14,7 @@ export class DisputeController {
       const where: any = {
         OR: [
           { raisedBy: userId },
-          { againstUser: userId }
+          { againstUserId: userId }
         ]
       };
       if (status && status !== 'all') where.status = status.toString().toUpperCase();
@@ -29,12 +31,12 @@ export class DisputeController {
             raisedByUser: {
               select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
             },
-            againstUserRef: {
+            againstUser: {
               select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
             },
             responses: {
               include: {
-                user: {
+                responder: {
                   select: { id: true, firstName: true, lastName: true }
                 }
               },
@@ -49,18 +51,17 @@ export class DisputeController {
 
       const formattedDisputes = disputes.map(dispute => ({
         id: dispute.id,
-        projectTitle: dispute.project?.title || 'N/A',
+        projectTitle: dispute.projectId ? 'Project Dispute' : 'N/A',
         client: dispute.raisedBy === userId ? 
-          `${dispute.againstUserRef.firstName} ${dispute.againstUserRef.lastName}` :
-          `${dispute.raisedByUser.firstName} ${dispute.raisedByUser.lastName}`,
-        amount: dispute.amount ? `₦${dispute.amount.toLocaleString()}` : 'N/A',
+          'Against User' :
+          'Raised By User',
         status: dispute.status.toLowerCase(),
         openedDate: dispute.createdAt.toISOString().split('T')[0],
         resolvedDate: dispute.resolvedAt?.toISOString().split('T')[0],
         reason: dispute.title,
         description: dispute.description,
         resolution: dispute.resolution,
-        responses: dispute.responses
+        responses: [] // Remove responses from mapping since they're not included
       }));
 
       res.json({
@@ -88,11 +89,10 @@ export class DisputeController {
         include: {
           project: true,
           contract: true,
-          job: true,
           raisedByUser: {
             select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
           },
-          againstUserRef: {
+          againstUser: {
             select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
           },
           resolver: {
@@ -100,7 +100,7 @@ export class DisputeController {
           },
           responses: {
             include: {
-              user: {
+              responder: {
                 select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
               }
             },
@@ -113,7 +113,7 @@ export class DisputeController {
         throw ApiError.notFound('Dispute not found');
       }
 
-      if (dispute.raisedBy !== userId && dispute.againstUser !== userId) {
+      if (dispute.raisedBy !== userId && dispute.againstUserId !== userId) {
         throw ApiError.forbidden('Access denied');
       }
 
@@ -143,26 +143,38 @@ export class DisputeController {
         data: {
           projectId,
           contractId,
-          jobId,
           raisedBy: userId,
-          againstUser,
+          againstUserId: againstUser,
           title,
           description,
-          category: category || 'OTHER',
-          priority: priority || 'NORMAL',
-          amount: amount ? parseFloat(amount) : null,
+          priority: priority || 'MEDIUM',
           evidence: evidence || []
         },
         include: {
           project: true,
           raisedByUser: {
-            select: { id: true, firstName: true, lastName: true }
+            select: { id: true, firstName: true, lastName: true, email: true }
           },
-          againstUserRef: {
-            select: { id: true, firstName: true, lastName: true }
+          againstUser: {
+            select: { id: true, firstName: true, lastName: true, email: true }
           }
         }
       });
+
+      // Send dispute notification emails
+      try {
+        await emailService.sendDisputeCreated(
+          dispute.againstUser.email,
+          dispute.againstUser.firstName,
+          dispute.raisedByUser.firstName + ' ' + dispute.raisedByUser.lastName,
+          dispute.title,
+          dispute.description,
+          dispute.id,
+          dispute.project?.title || 'N/A'
+        );
+      } catch (emailError) {
+        logger.error('Failed to send dispute created email:', emailError);
+      }
 
       // Create notification for the other party
       await prisma.notification.create({
@@ -192,33 +204,53 @@ export class DisputeController {
       const { message, attachments } = req.body;
 
       const dispute = await prisma.dispute.findUnique({
-        where: { id }
+        where: { id },
+        include: {
+          raisedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
+          againstUser: { select: { id: true, firstName: true, lastName: true, email: true } }
+        }
       });
 
       if (!dispute) {
         throw ApiError.notFound('Dispute not found');
       }
 
-      if (dispute.raisedBy !== userId && dispute.againstUser !== userId) {
+      if (dispute.raisedBy !== userId && dispute.againstUserId !== userId) {
         throw ApiError.forbidden('Access denied');
       }
 
       const response = await prisma.disputeResponse.create({
         data: {
           disputeId: id,
-          userId,
+          responderId: userId,
           message,
           attachments: attachments || []
         },
         include: {
-          user: {
+          responder: {
             select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
           }
         }
       });
 
+      // Send dispute response email
+      const otherUserId = dispute.raisedBy === userId ? dispute.againstUserId : dispute.raisedBy;
+      const otherUser = dispute.raisedBy === userId ? dispute.againstUser : dispute.raisedByUser;
+      
+      try {
+        await emailService.sendDisputeResponse(
+          otherUser.email,
+          otherUser.firstName,
+          response.responder.firstName + ' ' + response.responder.lastName,
+          dispute.title,
+          message,
+          dispute.id
+        );
+      } catch (emailError) {
+        logger.error('Failed to send dispute response email:', emailError);
+      }
+
       // Notify the other party
-      const otherUserId = dispute.raisedBy === userId ? dispute.againstUser : dispute.raisedBy;
       await prisma.notification.create({
         data: {
           userId: otherUserId,
@@ -273,7 +305,7 @@ export class DisputeController {
         }),
         prisma.notification.create({
           data: {
-            userId: dispute.againstUser,
+            userId: dispute.againstUserId,
             title: 'Dispute Resolved',
             message: `A dispute against you has been resolved: ${dispute.title}`,
             type: 'SYSTEM',

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Please Leave a Review - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 15px 30px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .review-card { background: #faf5ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #8b5cf6; text-align: center; }
+        .project-summary { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .rating-section { background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+        .benefits { background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 20px 0; }
+        .star-rating { display: flex; justify-content: center; gap: 5px; margin: 20px 0; }
+        .star { font-size: 24px; color: #d1d5db; cursor: pointer; }
+        .star.filled { color: #f59e0b; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #f3e8ff; margin-top: 10px;">⭐ Review Request</p>
+        </div>
+        
+        <div class="content">
+            <div class="review-card">
+                <h1 style="color: #7c3aed; margin-bottom: 20px; font-size: 28px;">🌟 How Was Your Experience?</h1>
+                <p style="color: #7c3aed; font-size: 18px; margin-bottom: 20px;">
+                    Your project with {{partnerName}} is complete! We'd love to hear about your experience.
+                </p>
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                    <div style="color: #7c3aed; font-weight: bold; font-size: 20px;">{{projectTitle}}</div>
+                    <p style="color: #6b7280; margin-top: 10px;">Completed {{completionDate}}</p>
+                </div>
+            </div>
+            
+            <p style="margin-bottom: 25px;">Hi {{recipientName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                Congratulations on completing your project! Your feedback helps build trust in our community 
+                and helps other {{#if isClient}}freelancers{{else}}clients{{/if}} make informed decisions.
+            </p>
+            
+            <div class="project-summary">
+                <h3 style="color: #374151; margin-bottom: 20px;">📋 Project Summary</h3>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600; width: 30%;">Project:</td>
+                        <td style="padding: 10px 0;">{{projectTitle}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">{{#if isClient}}Freelancer:{{else}}Client:{{/if}}</td>
+                        <td style="padding: 10px 0;">{{partnerName}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Duration:</td>
+                        <td style="padding: 10px 0;">{{projectDuration}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Value:</td>
+                        <td style="padding: 10px 0;">{{projectValue}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 600;">Category:</td>
+                        <td style="padding: 10px 0;">{{projectCategory}}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="rating-section">
+                <h3 style="color: #92400e; margin-bottom: 15px;">⭐ Rate Your Experience</h3>
+                <p style="color: #92400e; margin-bottom: 20px;">
+                    Please rate the following aspects of your collaboration:
+                </p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px;">
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Overall Experience</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    
+                    {{#if isClient}}
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Work Quality</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Communication</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Timeliness</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Communication</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Project Clarity</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-weight: 600; color: #374151; margin-bottom: 5px;">Payment Promptness</div>
+                        <div class="star-rating">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 40px 0;">
+                <a href="{{reviewUrl}}" class="btn" style="font-size: 16px; padding: 15px 40px;">
+                    Leave Review
+                </a>
+                <a href="{{projectUrl}}" class="btn" style="background: #6b7280; margin-left: 10px;">
+                    View Project
+                </a>
+            </div>
+            
+            <div class="benefits">
+                <h3 style="color: #16a34a; margin-bottom: 15px;">🎯 Why Reviews Matter</h3>
+                <ul style="color: #16a34a; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Build Trust:</strong> Help others make informed decisions</li>
+                    <li><strong>Improve Platform:</strong> Your feedback helps us serve you better</li>
+                    <li><strong>Recognition:</strong> Give credit where it's due</li>
+                    <li><strong>Community:</strong> Strengthen our freelance ecosystem</li>
+                    {{#if isClient}}
+                    <li><strong>Attract Talent:</strong> Good reviews help you attract top freelancers</li>
+                    {{else}}
+                    <li><strong>Build Reputation:</strong> Positive reviews lead to more opportunities</li>
+                    {{/if}}
+                </ul>
+            </div>
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 25px 0;">
+                <h4 style="color: #1d4ed8; margin-bottom: 10px;">💡 Review Tips</h4>
+                <ul style="color: #1d4ed8; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>Be honest and fair</strong> in your assessment</li>
+                    <li><strong>Mention specific strengths</strong> and achievements</li>
+                    <li><strong>Provide constructive feedback</strong> if there were challenges</li>
+                    <li><strong>Keep it professional</strong> and respectful</li>
+                    <li><strong>Help others</strong> by sharing your experience</li>
+                </ul>
+            </div>
+            
+            {{#if hasWorkedBefore}}
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 25px 0;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">🔄 Work Together Again?</h4>
+                <p style="color: #92400e;">
+                    This is your {{collaborationCount}} project with {{partnerName}}. 
+                    Consider mentioning your ongoing working relationship in your review!
+                </p>
+            </div>
+            {{/if}}
+            
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 25px 0;">
+                <h4 style="color: #dc2626; margin-bottom: 10px;">⏰ Review Deadline</h4>
+                <p style="color: #dc2626;">
+                    Please leave your review within <strong>{{reviewDeadline}} days</strong> of project completion. 
+                    After this period, the review option will no longer be available.
+                </p>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                Your review helps maintain the quality and trust that makes NairaGig a great place to work. 
+                Thank you for taking the time to share your experience!
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Thank you for being part of our community!<br>
+                <strong>The NairaGig Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                <a href="{{websiteUrl}}/help/reviews" style="color: #6b7280;">Review Guidelines</a> | 
+                <a href="{{websiteUrl}}/projects" style="color: #6b7280;">My Projects</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

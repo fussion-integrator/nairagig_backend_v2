@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Review Received - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .review-card { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .rating-display { text-align: center; margin: 20px 0; }
+        .stars { font-size: 24px; color: #ffd700; margin: 10px 0; }
+        .review-text { background: #fff; border: 1px solid #e1e5e9; padding: 15px; border-radius: 8px; font-style: italic; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .notification-icon { font-size: 48px; color: #667eea; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ New Review Received!</h1>
+            <p>Someone has reviewed your work</p>
+        </div>
+        
+        <div class="content">
+            <div class="notification-icon">📝</div>
+            
+            <p>Hi {{recipientName}},</p>
+            
+            <p>Great news! {{reviewerName}} has left a review for your work on <strong>{{projectTitle}}</strong>.</p>
+            
+            <div class="review-card">
+                <h3>📋 Review Details</h3>
+                <p><strong>Project:</strong> {{projectTitle}}</p>
+                <p><strong>Reviewer:</strong> {{reviewerName}}</p>
+                <p><strong>Review Date:</strong> {{reviewDate}}</p>
+                <p><strong>Review Type:</strong> {{reviewType}}</p>
+            </div>
+            
+            <div class="rating-display">
+                <h3>Overall Rating</h3>
+                <div class="stars">{{starRating}}</div>
+                <p><strong>{{overallRating}}/5.0</strong></p>
+            </div>
+            
+            {{#if detailedRatings}}
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>Detailed Ratings</h4>
+                <p>Quality: {{qualityRating}}/5 | Communication: {{communicationRating}}/5 | Timeliness: {{timelinessRating}}/5</p>
+            </div>
+            {{/if}}
+            
+            {{#if reviewComment}}
+            <div class="review-text">
+                <h4>💬 Review Comment</h4>
+                <p>"{{reviewComment}}"</p>
+            </div>
+            {{/if}}
+            
+            <h3>🚀 What you can do:</h3>
+            <ul>
+                <li>View the full review on your profile</li>
+                <li>Reply to thank the reviewer</li>
+                <li>Share this positive feedback</li>
+                <li>Use feedback to improve future work</li>
+            </ul>
+            
+            <div style="text-align: center;">
+                <a href="{{reviewUrl}}" class="cta-button">View Review</a>
+            </div>
+            
+            <p>Reviews help build your reputation on NairaGig. Keep up the great work!</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

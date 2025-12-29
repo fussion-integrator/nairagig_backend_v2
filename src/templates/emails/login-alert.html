@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Login Alert - NairaGig Security</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .alert-box { background: #fef3c7; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #f59e0b; }
+        .login-details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .secure-box { background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; margin: 20px 0; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        .warning { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔐 NairaGig Security</div>
+            <p style="color: #fef3c7; margin-top: 10px;">New Login Alert</p>
+        </div>
+        
+        <div class="content">
+            <div class="alert-box">
+                <h2 style="color: #92400e; margin-bottom: 15px;">⚠️ New Login Detected</h2>
+                <p style="color: #92400e;">
+                    We detected a new login to your NairaGig account. If this was you, no action is needed. 
+                    If you don't recognize this activity, please secure your account immediately.
+                </p>
+            </div>
+            
+            <p style="margin-bottom: 20px;">Hi {{firstName}},</p>
+            
+            <p style="margin-bottom: 25px;">
+                Your NairaGig account was accessed from a new device or location. Here are the details:
+            </p>
+            
+            <div class="login-details">
+                <h3 style="color: #374151; margin-bottom: 15px;">Login Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600; width: 30%;">Time:</td>
+                        <td style="padding: 10px 0;">{{loginTime}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Location:</td>
+                        <td style="padding: 10px 0;">{{location}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">Device:</td>
+                        <td style="padding: 10px 0;">{{deviceInfo}}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px 0; font-weight: 600;">IP Address:</td>
+                        <td style="padding: 10px 0;">{{ipAddress}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 600;">Login Method:</td>
+                        <td style="padding: 10px 0;">{{authProvider}} OAuth</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 25px 0;">
+                <h3 style="color: #dc2626; margin-bottom: 15px;">🚨 If This Wasn't You</h3>
+                <p style="color: #dc2626; margin-bottom: 15px;">
+                    If you don't recognize this login, your account may be compromised. Take these steps immediately:
+                </p>
+                <ul style="color: #dc2626; margin-left: 20px;">
+                    <li>Change your password on your OAuth provider ({{authProvider}})</li>
+                    <li>Review your account activity</li>
+                    <li>Enable two-factor authentication</li>
+                    <li>Contact our support team</li>
+                </ul>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="{{websiteUrl}}/settings/security" class="btn">Secure My Account</a>
+                </div>
+            </div>
+            
+            <div class="secure-box">
+                <h3 style="color: #16a34a; margin-bottom: 15px;">✅ If This Was You</h3>
+                <p style="color: #16a34a;">
+                    Great! Your account is secure. We recommend enabling two-factor authentication 
+                    for additional security on future logins.
+                </p>
+            </div>
+            
+            <h3 style="color: #374151; margin: 30px 0 15px 0;">🛡️ Security Tips</h3>
+            <ul style="color: #6b7280; margin-left: 20px; line-height: 1.8;">
+                <li>Always log out from shared or public devices</li>
+                <li>Use strong, unique passwords for your OAuth accounts</li>
+                <li>Enable two-factor authentication when available</li>
+                <li>Regularly review your account activity</li>
+                <li>Be cautious of phishing emails and suspicious links</li>
+            </ul>
+            
+            <p style="margin-top: 30px; color: #6b7280;">
+                For security questions or concerns, contact us at 
+                <a href="mailto:security@nairagig.com" style="color: #dc2626;">security@nairagig.com</a>
+            </p>
+            
+            <p style="margin-top: 20px;">
+                Stay secure,<br>
+                <strong>The NairaGig Security Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="divider"></div>
+            <p class="text-muted">
+                This is an automated security alert. Please do not reply to this email.<br>
+                © {{currentYear}} NairaGig. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

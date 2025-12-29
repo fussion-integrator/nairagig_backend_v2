@@ -7,17 +7,10 @@ export interface AuthenticatedUser {
   firstName: string;
   lastName: string;
   role: string;
+  status: string;
   profileImageUrl?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-  }
 }

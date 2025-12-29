@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenge Results - NairaGig</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .results-card { background: #f8f9ff; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .winner-card { background: #f8fff8; border-left: 4px solid #28a745; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .participant-card { background: #fff; border: 1px solid #e1e5e9; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .results-icon { font-size: 48px; color: #667eea; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Challenge Results</h1>
+            <p>The results are in!</p>
+        </div>
+        
+        <div class="content">
+            <div class="results-icon">📊</div>
+            
+            <p>Hi {{participantName}},</p>
+            
+            <p>The results for <strong>{{challengeTitle}}</strong> have been announced!</p>
+            
+            <div class="results-card">
+                <h3>📋 Challenge Summary</h3>
+                <p><strong>Challenge:</strong> {{challengeTitle}}</p>
+                <p><strong>Total Participants:</strong> {{totalParticipants}}</p>
+                <p><strong>Total Submissions:</strong> {{totalSubmissions}}</p>
+                <p><strong>Prize Pool:</strong> ₦{{prizePool}}</p>
+                <p><strong>Results Date:</strong> {{resultsDate}}</p>
+            </div>
+            
+            {{#if isWinner}}
+            <div class="winner-card">
+                <h3>🎉 Congratulations!</h3>
+                <p>You placed <strong>{{position}}</strong> in this challenge!</p>
+                <p><strong>Prize Amount:</strong> ₦{{prizeAmount}}</p>
+                <p>Your prize will be credited to your account within 24 hours.</p>
+            </div>
+            {{else}}
+            <h3>📈 Your Performance</h3>
+            <p><strong>Your Rank:</strong> {{yourRank}} out of {{totalSubmissions}}</p>
+            <p><strong>Score:</strong> {{yourScore}}/100</p>
+            {{#if feedback}}
+            <p><strong>Feedback:</strong> {{feedback}}</p>
+            {{/if}}
+            {{/if}}
+            
+            <h3>🏆 Top Winners</h3>
+            {{#each winners}}
+            <div class="participant-card">
+                <strong>{{position}}. {{name}}</strong>
+                <br>Prize: ₦{{prize}} | Score: {{score}}/100
+            </div>
+            {{/each}}
+            
+            <h3>🚀 What's Next?</h3>
+            <ul>
+                <li>Check out upcoming challenges</li>
+                <li>Improve your skills for future competitions</li>
+                <li>Connect with other participants</li>
+                {{#if isWinner}}
+                <li>Claim your prize and celebrate!</li>
+                {{/if}}
+            </ul>
+            
+            <div style="text-align: center;">
+                <a href="{{challengeUrl}}" class="cta-button">View Full Results</a>
+            </div>
+            
+            <p>Thank you for participating!</p>
+            
+            <p>Best regards,<br>The NairaGig Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 NairaGig. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
