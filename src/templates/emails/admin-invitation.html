@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Invitation - NairaGig</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        .title {
+            color: #1f2937;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+            margin: 0;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .message {
+            color: #4b5563;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 25px;
+        }
+        .role-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background: #f3f4f6;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .info-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .info-text {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer-text {
+            color: #9ca3af;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-link {
+            display: inline-block;
+            margin: 0 10px;
+            color: #6b7280;
+            text-decoration: none;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .title {
+                font-size: 24px;
+            }
+            .cta-button {
+                display: block;
+                text-align: center;
+                margin: 20px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🎉 You're Invited!</h1>
+            <p class="subtitle">Join the NairaGig Admin Team</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">Hello there!</div>
+            
+            <div class="message">
+                You've been invited by <strong>{{invitedBy}}</strong> to join the NairaGig platform as an administrator. 
+                We're excited to have you on our team!
+            </div>
+
+            <div class="message">
+                Your assigned role: <span class="role-badge">{{role}}</span>
+            </div>
+
+            <div class="info-box">
+                <div class="info-title">🔐 What happens next?</div>
+                <div class="info-text">
+                    Click the button below to accept your invitation and set up your admin account. 
+                    You'll be able to access the admin dashboard and start managing the platform.
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{inviteUrl}}" class="cta-button">Accept Invitation</a>
+            </div>
+
+            <div class="info-box">
+                <div class="info-title">⚠️ Important Notes:</div>
+                <div class="info-text">
+                    • This invitation will expire in 7 days<br>
+                    • You'll need to use Google OAuth to sign in<br>
+                    • Make sure to use this email address ({{email}}) for authentication<br>
+                    • Contact the inviting admin if you have any questions
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-text">
+                This invitation was sent to {{email}}
+            </div>
+            <div class="footer-text">
+                If you didn't expect this invitation, you can safely ignore this email.
+            </div>
+            <div class="social-links">
+                <a href="https://nairagig.com" class="social-link">🌐 Website</a>
+                <a href="mailto:support@nairagig.com" class="social-link">📧 Support</a>
+            </div>
+            <div class="footer-text">
+                © 2024 NairaGig. All rights reserved.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

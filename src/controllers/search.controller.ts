@@ -195,15 +195,21 @@ export class SearchController {
       // Calculate total results
       const totalResults = Object.values(results).reduce((sum: number, arr: any[]) => sum + arr.length, 0);
 
-      // Track search query
+      // Track search query safely
       try {
-        await prisma.$executeRaw`
-          INSERT INTO search_queries (id, query, "userId", type, results, "createdAt")
-          VALUES (${require('crypto').randomUUID()}, ${searchTerm}, ${userId}, ${type as string || 'all'}, ${totalResults}, ${new Date()})
-        `;
+        await prisma.searchQuery.create({
+          data: {
+            id: require('crypto').randomUUID(),
+            query: searchTerm,
+            userId: userId,
+            type: (type as string) || 'all',
+            results: totalResults,
+            createdAt: new Date()
+          }
+        });
       } catch (error) {
         // Ignore tracking errors
-        console.warn('Search tracking failed:', error);
+        logger.warn('Search tracking failed');
       }
 
       res.json({
@@ -298,32 +304,43 @@ export class SearchController {
         return res.json({ success: true, data: [] });
       }
 
-      const recentSearches = await prisma.$queryRaw`
-        SELECT DISTINCT query FROM search_queries 
-        WHERE "userId" = ${userId} 
-        ORDER BY "createdAt" DESC 
-        LIMIT 10
-      ` as Array<{ query: string }>;
+      const recentSearches = await prisma.searchQuery.findMany({
+        where: { userId: userId },
+        select: { query: true },
+        distinct: ['query'],
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
 
       res.json({
         success: true,
         data: recentSearches.map(s => s.query)
       });
     } catch (error) {
-      console.warn('Recent searches failed:', error);
+      logger.warn('Recent searches failed');
       res.json({ success: true, data: [] });
     }
   }
 
   async getPopularSearches(req: Request, res: Response, next: NextFunction) {
     try {
-      const popularSearches = await prisma.$queryRaw`
-        SELECT query, COUNT(*) as count FROM search_queries 
-        WHERE "createdAt" >= NOW() - INTERVAL '7 days'
-        GROUP BY query 
-        ORDER BY count DESC 
-        LIMIT 10
-      ` as Array<{ query: string; count: bigint }>;
+      const popularSearches = await prisma.searchQuery.groupBy({
+        by: ['query'],
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days
+          }
+        },
+        _count: {
+          query: true
+        },
+        orderBy: {
+          _count: {
+            query: 'desc'
+          }
+        },
+        take: 10
+      });
 
       const fallbackSearches = [
         'Web Developer', 'UI/UX Designer', 'Mobile App', 'Logo Design',
@@ -337,7 +354,7 @@ export class SearchController {
           : fallbackSearches
       });
     } catch (error) {
-      console.warn('Popular searches failed:', error);
+      logger.warn('Popular searches failed');
       res.json({ 
         success: true, 
         data: ['Web Developer', 'UI/UX Designer', 'Mobile App', 'Logo Design']
@@ -354,15 +371,20 @@ export class SearchController {
         throw ApiError.badRequest('Query is required');
       }
 
-      await prisma.$executeRaw`
-        UPDATE search_queries 
-        SET clicked = true 
-        WHERE query = ${query} AND "userId" = ${userId} AND clicked = false
-      `;
+      await prisma.searchQuery.updateMany({
+        where: {
+          query: query,
+          userId: userId,
+          clicked: false
+        },
+        data: {
+          clicked: true
+        }
+      });
 
       res.json({ success: true });
     } catch (error) {
-      console.warn('Click tracking failed:', error);
+      logger.warn('Click tracking failed');
       res.json({ success: true });
     }
   }

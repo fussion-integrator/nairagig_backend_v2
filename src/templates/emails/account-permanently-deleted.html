@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Permanently Deleted - NairaGig</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #7c2d12 0%, #991b1b 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #22c55e; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .btn:hover { background: #16a34a; }
+        .alert { background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .alert-icon { font-size: 24px; margin-bottom: 10px; }
+        .final-box { background: #7f1d1d; color: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .info-box { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 4px; }
+        .text-center { text-align: center; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .mb-20 { margin-bottom: 20px; }
+        .social-links { margin: 20px 0; }
+        .social-links a { margin: 0 10px; color: #6b7280; text-decoration: none; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+        ul { padding-left: 20px; margin: 15px 0; }
+        li { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #fecaca; margin-top: 10px;">Final Account Deletion Notice</p>
+        </div>
+        
+        <div class="content">
+            <div class="alert text-center">
+                <div class="alert-icon">🗑️</div>
+                <h2 style="color: #991b1b; margin-bottom: 10px;">Account Permanently Deleted</h2>
+                <p><strong>Your NairaGig account has been permanently removed from our system</strong></p>
+            </div>
+
+            <p>Dear User,</p>
+            
+            <p>This is to confirm that your NairaGig account has been permanently deleted from our system on <strong>{{deletionDate}}</strong> after the retention period expired.</p>
+
+            <div class="final-box text-center">
+                <h3 style="margin-bottom: 15px;">🔒 FINAL DELETION COMPLETED</h3>
+                <ul style="text-align: left; color: #fecaca;">
+                    <li><strong>Deletion Date:</strong> {{deletionDate}}</li>
+                    <li><strong>Reference ID:</strong> {{referenceId}}</li>
+                    <li><strong>Original Deletion:</strong> {{originalDeletionDate}}</li>
+                    <li><strong>Retention Period:</strong> {{retentionPeriod}} days</li>
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px;">What Has Been Permanently Removed:</h3>
+            <ul>
+                <li>All personal information and profile data</li>
+                <li>Account credentials and login access</li>
+                <li>Transaction history and financial records</li>
+                <li>Project files and communications</li>
+                <li>All associated account data and backups</li>
+            </ul>
+
+            <div class="info-box">
+                <h3 style="color: #3b82f6; margin-bottom: 15px;">💰 Financial Settlement</h3>
+                <p>Any outstanding financial matters have been processed according to our policies:</p>
+                <ul>
+                    <li>Pending payments were processed before deletion</li>
+                    <li>Account balances were handled per our refund policy</li>
+                    <li>All financial obligations have been settled</li>
+                </ul>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 15px;">Important Information:</h3>
+            <ul>
+                <li><strong>No Recovery Possible:</strong> This deletion is permanent and irreversible</li>
+                <li><strong>Data Compliance:</strong> All data has been removed in compliance with privacy regulations</li>
+                <li><strong>New Account:</strong> You may create a new account if desired, but previous data cannot be restored</li>
+                <li><strong>Email Address:</strong> Your email address is now available for new account registration</li>
+            </ul>
+
+            <div class="text-center" style="margin: 30px 0;">
+                <a href="{{websiteUrl}}/register" class="btn">Create New Account</a>
+            </div>
+
+            <div class="info-box">
+                <h3 style="color: #3b82f6; margin-bottom: 15px;">📞 Still Need Help?</h3>
+                <p>If you have questions about:</p>
+                <ul>
+                    <li>Creating a new account</li>
+                    <li>Understanding our platform policies</li>
+                    <li>General platform information</li>
+                </ul>
+                <p style="margin-top: 15px;">Please contact our support team at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a></p>
+                <p><strong>Note:</strong> We cannot restore deleted account data or provide information about permanently deleted accounts.</p>
+            </div>
+
+            <div class="divider"></div>
+            
+            <p class="text-muted">
+                Thank you for being part of the NairaGig community. We wish you success in your future endeavors.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="social-links">
+                <a href="https://twitter.com/nairagig">Twitter</a>
+                <a href="https://linkedin.com/company/nairagig">LinkedIn</a>
+                <a href="https://instagram.com/nairagig">Instagram</a>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <p class="text-muted mb-20">
+                This email confirms the permanent deletion of your account.<br>
+                For general inquiries, please contact <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+            </p>
+            
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                Lagos, Nigeria | <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

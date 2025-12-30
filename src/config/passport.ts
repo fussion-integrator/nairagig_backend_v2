@@ -5,9 +5,10 @@ import { Strategy as AppleStrategy } from 'passport-apple';
 import { config } from '@/config/config';
 import { prisma } from '@/config/database';
 import { logger } from '@/utils/logger';
+import { getDefaultSubscriptionTier } from '@/utils/subscription';
 
-// Google OAuth Strategy
-passport.use(new GoogleStrategy({
+// Google OAuth Strategy for regular users
+passport.use('google', new GoogleStrategy({
   clientID: config.googleClientId!,
   clientSecret: config.googleClientSecret!,
   callbackURL: '/api/v1/auth/google/callback'
@@ -32,6 +33,7 @@ passport.use(new GoogleStrategy({
           }
         });
       } else {
+        const defaultTier = await getDefaultSubscriptionTier();
         user = await prisma.user.create({
           data: {
             googleId: profile.id,
@@ -40,7 +42,8 @@ passport.use(new GoogleStrategy({
             lastName: profile.name?.familyName || '',
             profileImageUrl: profile.photos?.[0]?.value || null,
             authProvider: 'GOOGLE',
-            emailVerifiedAt: new Date()
+            emailVerifiedAt: new Date(),
+            subscriptionTier: defaultTier
           }
         });
       }
@@ -49,6 +52,30 @@ passport.use(new GoogleStrategy({
     return done(null, user);
   } catch (error) {
     logger.error('Google OAuth error:', error);
+    return done(error, false);
+  }
+}));
+
+// Google OAuth Strategy for admin users
+passport.use('google-admin', new GoogleStrategy({
+  clientID: config.googleClientId!,
+  clientSecret: config.googleClientSecret!,
+  callbackURL: '/api/v1/auth/google/callback'
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // For admin OAuth, we just return the profile data
+    // The actual admin lookup is handled in the controller
+    const adminProfile = {
+      googleId: profile.id,
+      email: profile.emails?.[0]?.value || '',
+      firstName: profile.name?.givenName || '',
+      lastName: profile.name?.familyName || '',
+      profileImageUrl: profile.photos?.[0]?.value || null
+    };
+
+    return done(null, adminProfile);
+  } catch (error) {
+    logger.error('Admin Google OAuth error:', error);
     return done(error, false);
   }
 }));
@@ -99,7 +126,8 @@ passport.use('linkedin', new OAuth2Strategy({
             lastName: linkedinProfile.family_name || '',
             profileImageUrl: linkedinProfile.picture || null,
             authProvider: 'LINKEDIN',
-            emailVerifiedAt: new Date()
+            emailVerifiedAt: new Date(),
+            subscriptionTier: 'free'
           }
         });
       }
@@ -153,7 +181,8 @@ passport.use(new AppleStrategy({
             firstName: firstName,
             lastName: lastName,
             authProvider: 'APPLE',
-            emailVerifiedAt: new Date()
+            emailVerifiedAt: new Date(),
+            subscriptionTier: 'free'
           }
         });
       }

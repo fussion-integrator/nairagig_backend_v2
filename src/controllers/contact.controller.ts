@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { emailService } from '../services/email.service';
+import { logger } from '../utils/logger';
+import { ApiError } from '../utils/ApiError';
 
 const prisma = new PrismaClient();
 
@@ -10,19 +12,40 @@ export const submitContact = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!name || !email || !message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email, and message are required'
-      });
+      throw ApiError.badRequest('Name, email, and message are required');
+    }
+
+    // Input sanitization and validation
+    const sanitizedName = name.trim().substring(0, 100);
+    const sanitizedEmail = email.trim().toLowerCase().substring(0, 255);
+    const sanitizedMessage = message.trim().substring(0, 2000);
+    
+    if (sanitizedName.length < 2) {
+      throw ApiError.badRequest('Name must be at least 2 characters long');
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email address'
-      });
+    if (!emailRegex.test(sanitizedEmail)) {
+      throw ApiError.badRequest('Please provide a valid email address');
+    }
+
+    if (sanitizedMessage.length < 10) {
+      throw ApiError.badRequest('Message must be at least 10 characters long');
+    }
+
+    // Rate limiting check - prevent spam
+    const recentContacts = await prisma.contact.count({
+      where: {
+        email: sanitizedEmail,
+        createdAt: {
+          gte: new Date(Date.now() - 60 * 60 * 1000) // Last hour
+        }
+      }
+    });
+
+    if (recentContacts >= 3) {
+      throw ApiError.tooManyRequests('Too many contact submissions. Please try again later.');
     }
 
     // Map subject to enum value
@@ -34,21 +57,37 @@ export const submitContact = async (req: Request, res: Response) => {
       'report': 'REPORT'
     };
 
+    const validatedSubject = subject && subjectMap[subject] ? subjectMap[subject] : 'GENERAL';
+
     // Save to database
     const contact = await prisma.contact.create({
       data: {
-        name,
-        email,
-        subject: (subjectMap[subject] || 'GENERAL') as any,
-        message
+        name: sanitizedName,
+        email: sanitizedEmail,
+        subject: validatedSubject as any,
+        message: sanitizedMessage
       }
     });
 
     // Send confirmation email to user
-    await emailService.sendContactConfirmation(name, email, subject, message, contact.id);
+    await emailService.sendContactConfirmation(
+      sanitizedName, 
+      sanitizedEmail, 
+      validatedSubject, 
+      sanitizedMessage, 
+      contact.id
+    );
     
     // Send notification email to admin
-    await emailService.sendContactAdminNotification(name, email, subject, message, contact.id);
+    await emailService.sendContactAdminNotification(
+      sanitizedName, 
+      sanitizedEmail, 
+      validatedSubject, 
+      sanitizedMessage, 
+      contact.id
+    );
+
+    logger.info(`Contact form submitted: ${contact.id}`);
 
     res.status(200).json({
       success: true,
@@ -57,7 +96,15 @@ export const submitContact = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Error submitting contact:', error);
+    logger.error('Error submitting contact form');
+    
+    if (error instanceof ApiError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Internal server error'

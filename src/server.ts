@@ -39,7 +39,8 @@ import { disputeRoutes } from '@/routes/dispute.routes';
 import { reviewRoutes } from '@/routes/review.routes';
 import { supportRoutes } from '@/routes/support.routes';
 import { scheduledJobsRoutes } from '@/routes/scheduled-jobs.routes';
-import { adminRoutes } from '@/routes/admin.routes';
+import adminAuthRoutes from '@/routes/admin.routes';
+import adminManagementRoutes from '@/routes/adminManagement.routes';
 import { platformEventsRoutes } from '@/routes/platform-events.routes';
 import { marketingRoutes } from '@/routes/marketing.routes';
 import contactRoutes from '@/routes/contact.routes';
@@ -65,10 +66,25 @@ const io = new Server(server, {
 setupSocketIO(io);
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 app.use(cors({
   origin: config.corsOrigin,
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Session middleware
@@ -94,14 +110,28 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parsing middleware
+// Body parsing middleware with security limits
 app.use(compression());
 app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ 
+  limit: '1mb',
+  verify: (req, res, buf) => {
+    // Store raw body for webhook signature verification
+    (req as any).rawBody = buf;
+  }
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '1mb',
+  parameterLimit: 100
+}));
 
-// Static file serving for uploads
-app.use('/uploads', express.static('uploads'));
+// Static file serving for uploads with security headers
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  next();
+}, express.static('uploads'));
 
 // Logging middleware
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
@@ -145,7 +175,8 @@ app.use(`/api/${config.apiVersion}/disputes`, disputeRoutes);
 app.use(`/api/${config.apiVersion}/reviews`, reviewRoutes);
 app.use(`/api/${config.apiVersion}/support`, supportRoutes);
 app.use(`/api/${config.apiVersion}/webhooks/scheduled`, scheduledJobsRoutes);
-app.use(`/api/${config.apiVersion}/admin`, adminRoutes);
+app.use(`/api/${config.apiVersion}/admin/auth`, adminAuthRoutes);
+app.use(`/api/${config.apiVersion}/admin`, adminManagementRoutes);
 app.use(`/api/${config.apiVersion}/platform-events`, platformEventsRoutes);
 app.use(`/api/${config.apiVersion}/marketing`, marketingRoutes);
 app.use(`/api/${config.apiVersion}/contact`, contactRoutes);

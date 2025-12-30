@@ -154,17 +154,26 @@ export class PaymentController {
 
   async handleWebhook(req: Request, res: Response, next: NextFunction) {
     try {
+      // Validate webhook signature
+      const signature = req.headers['x-paystack-signature'] as string;
+      if (!signature) {
+        logger.warn('Webhook received without signature');
+        throw ApiError.unauthorized('Missing webhook signature');
+      }
+
       const hash = crypto
         .createHmac('sha512', config.paystack.secretKey)
         .update(JSON.stringify(req.body))
         .digest('hex');
 
-      if (hash !== req.headers['x-paystack-signature']) {
+      // Use constant-time comparison to prevent timing attacks
+      if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(signature))) {
+        logger.warn('Invalid webhook signature received');
         throw ApiError.unauthorized('Invalid webhook signature');
       }
 
       const { event, data } = req.body;
-      logger.info(`Paystack webhook received: ${event}`, { data });
+      logger.info(`Paystack webhook received: ${event}`);
 
       if (event === 'charge.success') {
         await this.processSuccessfulWebhookPayment(data);
@@ -174,7 +183,7 @@ export class PaymentController {
 
       res.status(200).send('OK');
     } catch (error) {
-      logger.error('Webhook processing error:', error);
+      logger.error('Webhook processing error');
       res.status(200).send('OK'); // Always return 200 to Paystack
     }
   }

@@ -21,6 +21,11 @@ export const sessionTimeoutMiddleware = async (
   next: NextFunction
 ) => {
   try {
+    // Skip for OAuth routes
+    if (req.path.includes('/auth/google') || req.path.includes('/auth/linkedin') || req.path.includes('/auth/apple')) {
+      return next();
+    }
+
     // Skip for non-authenticated routes
     if (!req.user?.id) {
       return next();

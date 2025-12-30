@@ -64,8 +64,8 @@ export const config = {
 
   // Paystack
   paystack: {
-    secretKey: process.env.PAYSTACK_SECRET_KEY || 'sk_test_cb8c3d814d27b3c0863779c1a5ec28b0b0fab33d',
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_42374fd7a9094b271918bc92e059de06db81a656'
+    secretKey: process.env.PAYSTACK_SECRET_KEY!,
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY!
   },
 
   // Frontend URL
@@ -73,7 +73,13 @@ export const config = {
 };
 
 // Validate required environment variables
-const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+const requiredEnvVars = [
+  'DATABASE_URL', 
+  'JWT_SECRET', 
+  'JWT_REFRESH_SECRET',
+  'PAYSTACK_SECRET_KEY',
+  'PAYSTACK_PUBLIC_KEY'
+];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {

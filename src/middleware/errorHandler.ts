@@ -14,8 +14,7 @@ export const errorHandler = (
     res.status(error.statusCode).json({
       success: false,
       message: error.message,
-      ...(error.errors && { errors: error.errors }),
-      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+      ...(error.errors && { errors: error.errors })
     });
     return;
   }
@@ -24,8 +23,7 @@ export const errorHandler = (
   if (error.name === 'PrismaClientKnownRequestError') {
     res.status(400).json({
       success: false,
-      message: 'Database operation failed',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+      message: 'Database operation failed'
     });
     return;
   }
@@ -57,10 +55,9 @@ export const errorHandler = (
     return;
   }
 
-  // Default error
+  // Default error - never expose stack traces or internal details
   res.status(500).json({
     success: false,
-    message: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    message: 'Internal server error'
   });
 };

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message from NairaGig Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px 20px; text-align: center; }
+        .logo { color: white; font-size: 28px; font-weight: bold; text-decoration: none; }
+        .content { padding: 40px 30px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .btn { display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .btn:hover { background: #1d4ed8; }
+        .message-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 4px; }
+        .admin-badge { background: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .text-center { text-align: center; }
+        .text-muted { color: #6b7280; font-size: 14px; }
+        .mb-20 { margin-bottom: 20px; }
+        .social-links { margin: 20px 0; }
+        .social-links a { margin: 0 10px; color: #6b7280; text-decoration: none; }
+        .divider { height: 1px; background: #e9ecef; margin: 30px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="{{websiteUrl}}" class="logo">NairaGig</a>
+            <p style="color: #bfdbfe; margin-top: 10px;">Administrative Message</p>
+        </div>
+        
+        <div class="content">
+            <div style="margin-bottom: 20px;">
+                <span class="admin-badge">ADMIN MESSAGE</span>
+            </div>
+
+            <p>Dear {{firstName}},</p>
+            
+            <p>You have received a message from the NairaGig administrative team:</p>
+
+            <div class="message-box">
+                <h3 style="color: #1e40af; margin-bottom: 15px;">{{subject}}</h3>
+                <div style="white-space: pre-line;">{{message}}</div>
+            </div>
+
+            <p><strong>Sent by:</strong> {{adminName}}<br>
+            <strong>Date:</strong> {{sentDate}}</p>
+
+            {{#if actionRequired}}
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">⚠️ Action Required</h4>
+                <p>This message requires your attention. Please log in to your account to take any necessary actions.</p>
+            </div>
+            {{/if}}
+
+            <div class="text-center" style="margin: 30px 0;">
+                <a href="{{websiteUrl}}/dashboard" class="btn">Go to Dashboard</a>
+            </div>
+
+            <p class="text-muted">
+                If you need to respond to this message or have questions, please contact our support team at <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+            </p>
+
+            <div class="divider"></div>
+            
+            <p class="text-muted">
+                This message was sent by the NairaGig administrative team. 
+                Please do not reply directly to this email.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <div class="social-links">
+                <a href="https://twitter.com/nairagig">Twitter</a>
+                <a href="https://linkedin.com/company/nairagig">LinkedIn</a>
+                <a href="https://instagram.com/nairagig">Instagram</a>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <p class="text-muted mb-20">
+                This email was sent by NairaGig Administration.<br>
+                For support inquiries, please contact <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+            </p>
+            
+            <p class="text-muted">
+                © {{currentYear}} NairaGig. All rights reserved.<br>
+                Lagos, Nigeria | <a href="mailto:{{supportEmail}}">{{supportEmail}}</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

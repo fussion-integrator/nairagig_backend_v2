@@ -66,7 +66,7 @@ class EmailService {
 
       const mailOptions = {
         from: {
-          name: 'NairaGig',
+          name: 'NairaGig Security Team',
           address: 'hello@nairagig.com'
         },
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -75,9 +75,13 @@ class EmailService {
         cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(', ') : options.cc) : undefined,
         bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(', ') : options.bcc) : undefined,
         headers: {
-          'X-Priority': '1',
-          'X-MSMail-Priority': 'High',
-          'Importance': 'high'
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          'Importance': 'normal',
+          'X-Mailer': 'NairaGig Email Service',
+          'List-Unsubscribe': '<mailto:unsubscribe@nairagig.com>',
+          'Authentication-Results': 'nairagig.com; spf=pass; dkim=pass',
+          'X-Spam-Status': 'No'
         }
       };
 
@@ -162,6 +166,105 @@ class EmailService {
       subject: 'Secure Your Account with 2FA - NairaGig',
       template: 'two-factor-setup',
       data: { firstName, qrCodeUrl, manualCode, setupUrl }
+    });
+  }
+
+  async sendAccountVerification(firstName: string, email: string) {
+    return this.sendEmail({
+      to: email,
+      subject: '🎉 Account Verified - Welcome to Trusted Status!',
+      template: 'account-verified',
+      data: { firstName }
+    });
+  }
+
+  async sendAccountActivation(firstName: string, email: string) {
+    return this.sendEmail({
+      to: email,
+      subject: 'Account Activated - Welcome to Full Access!',
+      template: 'account-activated',
+      data: { firstName }
+    });
+  }
+
+  async sendAdminMessage(firstName: string, email: string, messageData: {
+    subject: string;
+    message: string;
+    adminName: string;
+    sentDate: string;
+    actionRequired?: boolean;
+  }) {
+    return this.sendEmail({
+      to: email,
+      subject: `Admin Message: ${messageData.subject}`,
+      template: 'admin-message',
+      data: { 
+        firstName,
+        subject: messageData.subject,
+        message: messageData.message,
+        adminName: messageData.adminName,
+        sentDate: messageData.sentDate,
+        actionRequired: messageData.actionRequired || false
+      }
+    });
+  }
+
+  async sendAccountRestoration(firstName: string, email: string, restorationData: {
+    restorationDate: string;
+    referenceId: string;
+    accountStatus: string;
+  }) {
+    return this.sendEmail({
+      to: email,
+      subject: 'Great News: Your NairaGig Account Has Been Restored',
+      template: 'account-restored',
+      data: { 
+        firstName,
+        restorationDate: restorationData.restorationDate,
+        referenceId: restorationData.referenceId,
+        accountStatus: restorationData.accountStatus
+      }
+    });
+  }
+
+  async sendAccountPermanentDeletion(email: string, deletionData: {
+    deletionDate: string;
+    referenceId: string;
+    originalDeletionDate: string;
+    retentionPeriod: string;
+  }) {
+    return this.sendEmail({
+      to: email,
+      subject: 'Final Notice: NairaGig Account Permanently Deleted',
+      template: 'account-permanently-deleted',
+      data: { 
+        deletionDate: deletionData.deletionDate,
+        referenceId: deletionData.referenceId,
+        originalDeletionDate: deletionData.originalDeletionDate,
+        retentionPeriod: deletionData.retentionPeriod
+      }
+    });
+  }
+
+  async sendAccountDeletion(firstName: string, email: string, deletionData: {
+    deletionDate: string;
+    referenceId: string;
+    retentionPeriod: string;
+    appealDeadline: string;
+    permanentDeletionDate: string;
+  }) {
+    return this.sendEmail({
+      to: email,
+      subject: 'Account Status Update - NairaGig',
+      template: 'account-deleted',
+      data: { 
+        firstName,
+        deletionDate: deletionData.deletionDate,
+        referenceId: deletionData.referenceId,
+        retentionPeriod: deletionData.retentionPeriod,
+        appealDeadline: deletionData.appealDeadline,
+        permanentDeletionDate: deletionData.permanentDeletionDate
+      }
     });
   }
 
@@ -977,6 +1080,26 @@ class EmailService {
       subject,
       template,
       data
+    });
+  }
+
+  // Admin invitation email
+  async sendAdminInvitation(data: {
+    to: string;
+    role: string;
+    invitedBy: string;
+    inviteUrl: string;
+  }) {
+    return this.sendEmail({
+      to: data.to,
+      subject: 'You\'re Invited to Join NairaGig Admin Team',
+      template: 'admin-invitation',
+      data: {
+        email: data.to,
+        role: data.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin',
+        invitedBy: data.invitedBy,
+        inviteUrl: data.inviteUrl
+      }
     });
   }
 }

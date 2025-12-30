@@ -1,0 +1,142 @@
+// Add these models to schema.prisma
+
+model Admin {
+  id                String           @id @default(uuid())
+  email             String           @unique
+  firstName         String
+  lastName          String
+  role              AdminRole        @default(ADMIN)
+  status            AdminStatus      @default(ACTIVE)
+  profileImageUrl   String?
+  lastLoginAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  // OAuth fields
+  googleId          String?          @unique
+  linkedinId        String?          @unique
+  appleId           String?          @unique
+  authProvider      AuthProvider     @default(GOOGLE)
+  
+  // Security
+  twoFactorEnabled  Boolean          @default(false)
+  loginAlerts       Boolean          @default(true)
+  sessionTimeout    Int              @default(480) // 8 hours in minutes
+  
+  // Invitation tracking
+  invitedBy         String?
+  invitedAt         DateTime?
+  firstLoginAt      DateTime?
+  
+  // Relations
+  inviter           Admin?           @relation("AdminInvitations", fields: [invitedBy], references: [id])
+  invitees          Admin[]          @relation("AdminInvitations")
+  permissions       AdminPermission[]
+  sessions          AdminSession[]
+  loginHistory      AdminLoginHistory[]
+  invitations       AdminInvitation[]
+  auditLogs         AdminAuditLog[]
+
+  @@map("admins")
+}
+
+model AdminInvitation {
+  id            String              @id @default(uuid())
+  email         String              @unique
+  invitedBy     String
+  token         String              @unique
+  role          AdminRole           @default(ADMIN)
+  status        InvitationStatus    @default(PENDING)
+  expiresAt     DateTime
+  acceptedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  
+  inviter       Admin               @relation(fields: [invitedBy], references: [id])
+  
+  @@map("admin_invitations")
+}
+
+model AdminPermission {
+  id          String    @id @default(uuid())
+  adminId     String
+  permission  String    // e.g., 'users.view', 'jobs.delete', etc.
+  granted     Boolean   @default(true)
+  grantedBy   String?
+  grantedAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  
+  admin       Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  @@unique([adminId, permission])
+  @@map("admin_permissions")
+}
+
+model AdminSession {
+  id           String   @id @default(uuid())
+  adminId      String
+  deviceInfo   String
+  ipAddress    String
+  location     String?
+  userAgent    String?
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  
+  admin        Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  @@unique([adminId, userAgent])
+  @@map("admin_sessions")
+}
+
+model AdminLoginHistory {
+  id         String      @id @default(uuid())
+  adminId    String
+  deviceInfo String
+  ipAddress  String
+  location   String?
+  userAgent  String?
+  status     LoginStatus @default(SUCCESS)
+  provider   String?     // 'google', 'linkedin', 'apple'
+  createdAt  DateTime    @default(now())
+  
+  admin      Admin       @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  @@map("admin_login_history")
+}
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  adminId       String
+  action        String   // 'user.suspend', 'job.delete', etc.
+  entityType    String?  // 'User', 'Job', etc.
+  entityId      String?
+  oldValues     Json?
+  newValues     Json?
+  ipAddress     String
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  
+  admin         Admin    @relation(fields: [adminId], references: [id])
+  
+  @@map("admin_audit_logs")
+}
+
+// Enums
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}

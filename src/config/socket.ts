@@ -21,7 +21,7 @@ export function setupSocketIO(io: Server) {
       const userId = socket.handshake.auth.userId;
       
       if (!userId && !token) {
-        console.log('❌ No authentication provided');
+        logger.warn('Socket authentication failed: No authentication provided');
         return next(new Error('Authentication required'));
       }
 
@@ -38,7 +38,7 @@ export function setupSocketIO(io: Server) {
         const tokenUserId = decoded.userId || decoded.id;
         
         if (!tokenUserId) {
-          console.log('❌ No userId in token');
+          logger.warn('Socket authentication failed: No userId in token');
           return next(new Error('Invalid token format'));
         }
         
@@ -49,23 +49,23 @@ export function setupSocketIO(io: Server) {
       }
 
       if (!user) {
-        console.log('❌ User not found');
+        logger.warn('Socket authentication failed: User not found');
         return next(new Error('User not found'));
       }
 
-      console.log('✅ Socket authenticated:', user.firstName, user.lastName);
+      logger.info(`Socket authenticated for user ID: ${user.id}`);
       socket.userId = user.id;
       socket.userData = user;
       
       next();
     } catch (error: any) {
-      console.error('❌ Socket auth error:', error.message);
+      logger.error('Socket authentication error');
       next(new Error('Authentication failed'));
     }
   });
 
   io.on('connection', (socket: any) => {
-    console.log(`✅ User ${socket.userId} connected with socket ID: ${socket.id}`);
+    logger.info(`User connected with socket ID: ${socket.id}`);
 
     // Join user's personal room
     socket.join(`user_${socket.userId}`);
@@ -73,7 +73,7 @@ export function setupSocketIO(io: Server) {
     // Join conversation rooms
     socket.on('join_conversation', async (conversationId: string) => {
       try {
-        console.log(`🔄 User ${socket.userId} attempting to join conversation ${conversationId}`);
+        logger.info(`User attempting to join conversation`);
         
         const conversation = await prisma.conversation.findFirst({
           where: {
@@ -93,12 +93,11 @@ export function setupSocketIO(io: Server) {
 
         if (conversation) {
           socket.join(`conversation_${conversationId}`);
-          console.log(`✅ User ${socket.userId} joined conversation ${conversationId}`);
-          console.log(`👥 Conversation participants:`, conversation.participants.map(p => `${p.user.firstName} ${p.user.lastName} (${p.userId})`));
+          logger.info(`User joined conversation successfully`);
           
-          // Get current room members
+          // Get current room members count only
           const room = ioInstance.sockets.adapter.rooms.get(`conversation_${conversationId}`);
-          console.log(`👥 Current room members:`, room ? Array.from(room) : 'No members');
+          logger.info(`Conversation has ${room ? room.size : 0} active members`);
           
           // Notify others in the conversation
           socket.to(`conversation_${conversationId}`).emit('user_joined', {
@@ -106,18 +105,18 @@ export function setupSocketIO(io: Server) {
             user: socket.userData
           });
         } else {
-          console.log(`❌ User ${socket.userId} not authorized for conversation ${conversationId}`);
+          logger.warn('User not authorized for conversation');
           socket.emit('error', { message: 'Not authorized for this conversation' });
         }
       } catch (error) {
-        console.error('❌ Error joining conversation:', error);
+        logger.error('Error joining conversation');
         socket.emit('error', { message: 'Failed to join conversation' });
       }
     });
 
     socket.on('leave_conversation', (conversationId: string) => {
       socket.leave(`conversation_${conversationId}`);
-      console.log(`🔌 User ${socket.userId} left conversation ${conversationId}`);
+      logger.info('User left conversation');
       
       // Notify others in the conversation
       socket.to(`conversation_${conversationId}`).emit('user_left', {
@@ -126,7 +125,7 @@ export function setupSocketIO(io: Server) {
     });
 
     socket.on('typing_start', (data: { conversationId: string }) => {
-      console.log(`⌨️ User ${socket.userId} typing in ${data.conversationId}`);
+      logger.debug('User typing event');
       socket.to(`conversation_${data.conversationId}`).emit('user_typing', {
         userId: socket.userId,
         user: socket.userData,
@@ -142,12 +141,12 @@ export function setupSocketIO(io: Server) {
     });
 
     socket.on('disconnect', (reason: string) => {
-      console.log(`🔌 User ${socket.userId} disconnected: ${reason}`);
+      logger.info(`User disconnected: ${reason}`);
     });
 
     // WebRTC Signaling Events
     socket.on('call-offer', (data: { offer: any, to: string, type: 'voice' | 'video' }) => {
-      console.log(`📞 Call offer from ${socket.userId} to ${data.to}`);
+      logger.info('Call offer initiated');
       socket.to(`user_${data.to}`).emit('incoming-call', {
         offer: data.offer,
         from: socket.userId,
@@ -157,7 +156,7 @@ export function setupSocketIO(io: Server) {
     });
 
     socket.on('call-answer', (data: { answer: any, to: string }) => {
-      console.log(`📞 Call answer from ${socket.userId} to ${data.to}`);
+      logger.info('Call answered');
       socket.to(`user_${data.to}`).emit('call-answered', {
         answer: data.answer,
         from: socket.userId
@@ -172,7 +171,7 @@ export function setupSocketIO(io: Server) {
     });
 
     socket.on('call-end', (data: { to: string }) => {
-      console.log(`📞 Call ended by ${socket.userId}`);
+      logger.info('Call ended');
       socket.to(`user_${data.to}`).emit('call-ended', {
         from: socket.userId
       });

@@ -4,6 +4,7 @@ import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
 import { notificationService } from '../services/notification.service';
 import { emailService } from '@/services/email.service';
+import { ExperienceLevel, BudgetType, JobVisibility, JobStatus } from '@prisma/client';
 
 export class JobController {
   async getPublicJobs(req: Request, res: Response, next: NextFunction) {
@@ -172,12 +173,50 @@ export class JobController {
       const userId = (req.user as any)?.id;
       if (!userId) throw ApiError.unauthorized('User not authenticated');
 
+      logger.info('Creating job with data:', {
+        title: req.body.title,
+        categoryId: req.body.categoryId,
+        status: req.body.status,
+        budgetType: req.body.budgetType,
+        visibility: req.body.visibility,
+        hasApplicationDeadline: !!req.body.applicationDeadline,
+        coreFeatures: req.body.coreFeatures,
+        deliverables: req.body.deliverables,
+        timeline: req.body.timeline,
+        requirements: req.body.requirements,
+        requiredSkills: req.body.requiredSkills
+      });
+
+      // Validate required fields first
+      if (!req.body.title) {
+        throw ApiError.badRequest('Job title is required');
+      }
+      if (!req.body.description) {
+        throw ApiError.badRequest('Job description is required');
+      }
+      if (!req.body.categoryId) {
+        throw ApiError.badRequest('Category is required');
+      }
+
       const { 
         categoryId, requiredSkills, experienceLevel, budgetType, visibility,
-        projectDuration, jobType, coreFeatures, deliverables, timeline, 
+        estimatedDuration, durationType, coreFeatures, deliverables, timeline, 
         referenceLinks, managedByNairagig, hourlyRate, location, attachments,
+        applicationDeadline,
         ...validJobData 
       } = req.body;
+      
+      // Process applicationDeadline - convert date string to DateTime
+      let processedApplicationDeadline = undefined;
+      if (applicationDeadline) {
+        try {
+          // If it's just a date string (YYYY-MM-DD), add time to make it a valid DateTime
+          const dateStr = applicationDeadline.includes('T') ? applicationDeadline : `${applicationDeadline}T23:59:59.999Z`;
+          processedApplicationDeadline = new Date(dateStr);
+        } catch (error) {
+          logger.warn('Invalid applicationDeadline format:', applicationDeadline);
+        }
+      }
       
       // Map experienceLevel to database enum
       const experienceLevelMap: {[key: string]: string} = {
@@ -194,9 +233,10 @@ export class JobController {
       
       // Map visibility to database enum
       const visibilityMap: {[key: string]: string} = {
-        'PUBLIC': 'PUBLIC',
-        'PRIVATE': 'PRIVATE',
-        'FEATURED': 'FEATURED'
+        'public': 'PUBLIC',
+        'private': 'PRIVATE', 
+        'featured': 'FEATURED',
+        'invite-only': 'PRIVATE'
       };
       
       // Process attachments - ensure proper format
@@ -218,21 +258,72 @@ export class JobController {
         }
       }
       
+      // Prepare job data with explicit field mapping
+      const jobData = {
+        title: validJobData.title,
+        description: validJobData.description,
+        categoryId,
+        clientId: userId,
+        requiredSkills: Array.isArray(requiredSkills) ? requiredSkills : [],
+        experienceLevel: experienceLevelMap[experienceLevel] || 'INTERMEDIATE',
+        budgetType: budgetTypeMap[budgetType] || 'FIXED',
+        visibility: visibilityMap[visibility] || 'PUBLIC',
+        attachments: processedAttachments,
+        coreFeatures: Array.isArray(coreFeatures) ? coreFeatures : [],
+        timeline: Array.isArray(timeline) ? timeline : [],
+        referenceLinks: Array.isArray(referenceLinks) ? referenceLinks : [],
+        managedByNairagig: Boolean(req.body.managedByNairagig),
+        status: validJobData.status || 'OPEN',
+        applicationDeadline: processedApplicationDeadline,
+        budgetMin: validJobData.budgetMin ? Number(validJobData.budgetMin) : null,
+        budgetMax: validJobData.budgetMax ? Number(validJobData.budgetMax) : null,
+        allowQuestions: validJobData.allowQuestions !== undefined ? Boolean(validJobData.allowQuestions) : true,
+        requireCoverLetter: validJobData.requireCoverLetter !== undefined ? Boolean(validJobData.requireCoverLetter) : true,
+        requirements: validJobData.requirements || null,
+        deliverables: deliverables || validJobData.deliverables || null,
+        // Use new duration fields directly
+        estimatedDuration: estimatedDuration ? Number(estimatedDuration) : null,
+        durationType: durationType || null
+      };
+
+      logger.info('Processed job data for Prisma:', {
+        title: jobData.title,
+        categoryId: jobData.categoryId,
+        clientId: jobData.clientId,
+        status: jobData.status,
+        budgetType: jobData.budgetType,
+        visibility: jobData.visibility,
+        coreFeatures: jobData.coreFeatures,
+        deliverables: jobData.deliverables,
+        timeline: jobData.timeline,
+        requirements: jobData.requirements
+      });
+
       const job = await prisma.job.create({
         data: {
-          ...validJobData,
-          categoryId,
-          requiredSkills: requiredSkills || [],
-          experienceLevel: experienceLevelMap[experienceLevel] || 'INTERMEDIATE',
-          budgetType: budgetTypeMap[budgetType] || 'FIXED',
-          visibility: visibilityMap[visibility] || 'PUBLIC',
-          attachments: processedAttachments,
-          coreFeatures: coreFeatures || [],
-          timeline: timeline || [],
-          referenceLinks: referenceLinks || [],
-          managedByNairagig: req.body.managedByNairagig || false,
-          status: validJobData.status || 'OPEN', // Default to OPEN if not specified
-          clientId: userId
+          title: jobData.title,
+          description: jobData.description,
+          categoryId: jobData.categoryId,
+          clientId: jobData.clientId,
+          requiredSkills: jobData.requiredSkills,
+          experienceLevel: jobData.experienceLevel as ExperienceLevel,
+          budgetType: jobData.budgetType as BudgetType,
+          visibility: jobData.visibility as JobVisibility,
+          attachments: jobData.attachments,
+          coreFeatures: jobData.coreFeatures,
+          timeline: jobData.timeline,
+          referenceLinks: jobData.referenceLinks,
+          managedByNairagig: jobData.managedByNairagig,
+          status: jobData.status as JobStatus,
+          applicationDeadline: jobData.applicationDeadline,
+          budgetMin: jobData.budgetMin,
+          budgetMax: jobData.budgetMax,
+          allowQuestions: jobData.allowQuestions,
+          requireCoverLetter: jobData.requireCoverLetter,
+          requirements: jobData.requirements,
+          deliverables: jobData.deliverables,
+          estimatedDuration: jobData.estimatedDuration,
+          durationType: jobData.durationType as any
         },
         include: {
           client: { select: { id: true, firstName: true, lastName: true } },
@@ -255,6 +346,16 @@ export class JobController {
       
       res.status(201).json({ success: true, data: job });
     } catch (error) {
+      logger.error('Job creation error:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId: userId,
+        requestBody: {
+          title: req.body.title,
+          categoryId: req.body.categoryId,
+          status: req.body.status
+        }
+      });
       next(error);
     }
   }
@@ -269,9 +370,25 @@ export class JobController {
 
       const { 
         categoryId, requiredSkills, experienceLevel, budgetType, visibility,
-        coreFeatures, timeline, referenceLinks, attachments,
+        estimatedDuration, durationType, coreFeatures, timeline, referenceLinks, attachments, applicationDeadline,
         ...validJobData 
       } = req.body;
+      
+      // Process applicationDeadline - convert date string to DateTime
+      let processedApplicationDeadline = undefined;
+      if (applicationDeadline) {
+        try {
+          // If it's just a date string (YYYY-MM-DD), add time to make it a valid DateTime
+          const dateStr = applicationDeadline.includes('T') ? applicationDeadline : `${applicationDeadline}T23:59:59.999Z`;
+          processedApplicationDeadline = new Date(dateStr);
+        } catch (error) {
+          logger.warn('Invalid applicationDeadline format:', applicationDeadline);
+        }
+      }
+      
+      // Process duration fields
+      const processedEstimatedDuration = estimatedDuration ? Number(estimatedDuration) : null;
+      const processedDurationType = durationType || null;
       
       // Apply same enum mappings as createJob
       const experienceLevelMap: {[key: string]: string} = {
@@ -286,9 +403,10 @@ export class JobController {
       };
       
       const visibilityMap: {[key: string]: string} = {
-        'PUBLIC': 'PUBLIC',
-        'PRIVATE': 'PRIVATE',
-        'FEATURED': 'FEATURED'
+        'public': 'PUBLIC',
+        'private': 'PRIVATE',
+        'featured': 'FEATURED',
+        'invite-only': 'PRIVATE'
       };
       
       // Process attachments
@@ -315,15 +433,18 @@ export class JobController {
         data: {
           ...validJobData,
           categoryId,
-          requiredSkills: requiredSkills || [],
+          requiredSkills: Array.isArray(requiredSkills) ? requiredSkills : (requiredSkills ? Object.values(requiredSkills) : []),
           experienceLevel: experienceLevelMap[experienceLevel] || experienceLevel,
           budgetType: budgetTypeMap[budgetType] || budgetType,
           visibility: visibilityMap[visibility] || visibility,
           attachments: processedAttachments,
-          coreFeatures: coreFeatures || [],
-          timeline: timeline || [],
-          referenceLinks: referenceLinks || [],
-          managedByNairagig: req.body.managedByNairagig || false
+          coreFeatures: Array.isArray(coreFeatures) ? coreFeatures : (coreFeatures ? Object.values(coreFeatures) : []),
+          timeline: Array.isArray(timeline) ? timeline : (timeline ? Object.values(timeline) : []),
+          referenceLinks: Array.isArray(referenceLinks) ? referenceLinks : (referenceLinks ? Object.values(referenceLinks) : []),
+          managedByNairagig: req.body.managedByNairagig || false,
+          applicationDeadline: processedApplicationDeadline,
+          estimatedDuration: processedEstimatedDuration,
+          durationType: processedDurationType as any
         },
         include: { client: true, category: true }
       });

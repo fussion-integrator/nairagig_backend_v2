@@ -134,6 +134,8 @@ model User {
   notifications             Notification[]
   paymentCards              PaymentCard[]
   paymentMethods            PaymentMethod[]
+  subscriptions             Subscription[]
+  paymentHistories          PaymentHistory[]
   portfolios                Portfolio[]
   projectMembers            ProjectMember[]
   milestones                ProjectMilestone[]
@@ -550,8 +552,90 @@ model PaymentMethod {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions         Subscription[]      @relation("SubscriptionPaymentMethod")
+  paymentHistories      PaymentHistory[]    @relation("PaymentMethodHistory")
 
   @@map("payment_methods")
+}
+
+model Subscription {
+  id                String             @id @default(uuid())
+  userId            String
+  planId            String
+  paymentMethodId   String?
+  status            SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean           @default(false)
+  canceledAt         DateTime?
+  trialStart         DateTime?
+  trialEnd           DateTime?
+  amount             Decimal
+  currency           String            @default("NGN")
+  billingCycle       BillingCycle      @default(MONTHLY)
+  autoRenew          Boolean           @default(true)
+  nextBillingDate    DateTime?
+  lastBillingDate    DateTime?
+  failedPaymentCount Int               @default(0)
+  metadata           Json              @default("{}")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               SubscriptionPlan  @relation(fields: [planId], references: [id])
+  paymentMethod      PaymentMethod?    @relation("SubscriptionPaymentMethod", fields: [paymentMethodId], references: [id])
+  paymentHistories   PaymentHistory[]  @relation("SubscriptionPayments")
+
+  @@map("subscriptions")
+}
+
+model SubscriptionPlan {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  displayName   String
+  description   String?
+  price         Decimal
+  currency      String         @default("NGN")
+  billingCycle  BillingCycle   @default(MONTHLY)
+  features      Json           @default("[]")
+  limits        Json           @default("{}")
+  isActive      Boolean        @default(true)
+  trialDays     Int            @default(0)
+  sortOrder     Int            @default(0)
+  metadata      Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model PaymentHistory {
+  id                String            @id @default(uuid())
+  userId            String
+  subscriptionId    String?
+  paymentMethodId   String?
+  amount            Decimal
+  currency          String            @default("NGN")
+  type              PaymentType
+  status            PaymentStatus     @default(PENDING)
+  description       String
+  invoiceNumber     String?           @unique
+  gatewayProvider   String?
+  gatewayReference  String?
+  gatewayResponse   Json?
+  failureReason     String?
+  refundAmount      Decimal?          @default(0)
+  refundedAt        DateTime?
+  dueDate           DateTime?
+  paidAt            DateTime?
+  metadata          Json              @default("{}")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription      Subscription?     @relation("SubscriptionPayments", fields: [subscriptionId], references: [id])
+  paymentMethod     PaymentMethod?    @relation("PaymentMethodHistory", fields: [paymentMethodId], references: [id])
+
+  @@map("payment_history")
 }
 
 model Conversation {
@@ -1468,6 +1552,41 @@ enum PaymentMethodStatus {
   BLOCKED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PaymentType {
+  SUBSCRIPTION
+  PLATFORM_FEE
+  CHALLENGE_ENTRY
+  PROMOTION
+  REFUND
+  PENALTY
+  BONUS
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELED
+}
+
 enum ConversationType {
   DIRECT
   GROUP
@@ -1775,4 +1894,181 @@ enum ContactStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+// Admin System Models
+model Admin {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  firstName         String
+  lastName          String
+  role              AdminRole           @default(ADMIN)
+  status            AdminStatus         @default(ACTIVE)
+  lastLoginAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  invitedBy         String?
+  invitedAt         DateTime?
+  activatedAt       DateTime?
+  suspendedAt       DateTime?
+  suspendedBy       String?
+  suspensionReason  String?
+  profileImageUrl   String?
+  phoneNumber       String?
+  timezone          String              @default("UTC")
+  twoFactorEnabled  Boolean             @default(false)
+  twoFactorSecret   String?
+  permissions       AdminPermission[]
+  sessions          AdminSession[]
+  loginHistory      AdminLoginHistory[]
+  auditLogs         AdminAuditLog[]     @relation("AdminAuditLogs")
+  createdAuditLogs  AdminAuditLog[]     @relation("CreatedAuditLogs")
+  inviter           Admin?              @relation("AdminInvitations", fields: [invitedBy], references: [id])
+  invitedAdmins     Admin[]             @relation("AdminInvitations")
+  suspender         Admin?              @relation("AdminSuspensions", fields: [suspendedBy], references: [id])
+  suspendedAdmins   Admin[]             @relation("AdminSuspensions")
+  sentInvitations   AdminInvitation[]   @relation("SentInvitations")
+
+  @@map("admins")
+}
+
+model AdminPermission {
+  id         String     @id @default(uuid())
+  adminId    String
+  permission Permission
+  grantedAt  DateTime   @default(now())
+  grantedBy  String?
+  expiresAt  DateTime?
+  admin      Admin      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([adminId, permission])
+  @@map("admin_permissions")
+}
+
+model AdminInvitation {
+  id         String            @id @default(uuid())
+  email      String            @unique
+  role       AdminRole         @default(ADMIN)
+  invitedBy  String
+  status     InvitationStatus  @default(PENDING)
+  token      String            @unique
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime          @default(now())
+  inviter    Admin             @relation("SentInvitations", fields: [invitedBy], references: [id])
+
+  @@map("admin_invitations")
+}
+
+model AdminSession {
+  id           String   @id @default(uuid())
+  adminId      String
+  token        String   @unique
+  deviceInfo   String?
+  ipAddress    String
+  userAgent    String?
+  location     String?
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  admin        Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_sessions")
+}
+
+model AdminLoginHistory {
+  id         String      @id @default(uuid())
+  adminId    String
+  ipAddress  String
+  userAgent  String?
+  location   String?
+  deviceInfo String?
+  status     LoginStatus @default(SUCCESS)
+  createdAt  DateTime    @default(now())
+  admin      Admin       @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_login_history")
+}
+
+model AdminAuditLog {
+  id           String    @id @default(uuid())
+  adminId      String
+  action       String
+  resource     String?
+  resourceId   String?
+  oldValues    Json?
+  newValues    Json?
+  ipAddress    String
+  userAgent    String?
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  performedBy  String?
+  admin        Admin     @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
+  performer    Admin?    @relation("CreatedAuditLogs", fields: [performedBy], references: [id])
+
+  @@map("admin_audit_logs")
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum Permission {
+  // User Management
+  VIEW_USERS
+  EDIT_USERS
+  SUSPEND_USERS
+  DELETE_USERS
+  VERIFY_USERS
+  
+  // Job Management
+  VIEW_JOBS
+  EDIT_JOBS
+  DELETE_JOBS
+  FEATURE_JOBS
+  MODERATE_JOBS
+  
+  // Project Management
+  VIEW_PROJECTS
+  EDIT_PROJECTS
+  CANCEL_PROJECTS
+  RESOLVE_DISPUTES
+  
+  // Financial Management
+  VIEW_TRANSACTIONS
+  PROCESS_WITHDRAWALS
+  REFUND_PAYMENTS
+  VIEW_FINANCIAL_REPORTS
+  
+  // Content Management
+  MODERATE_MESSAGES
+  DELETE_CONTENT
+  MANAGE_PORTFOLIOS
+  MANAGE_REVIEWS
+  
+  // System Management
+  VIEW_ANALYTICS
+  MANAGE_CATEGORIES
+  MANAGE_CHALLENGES
+  SYSTEM_SETTINGS
+  
+  // Admin Management (Super Admin only)
+  MANAGE_ADMINS
+  VIEW_AUDIT_LOGS
+  SYSTEM_MAINTENANCE
 }
