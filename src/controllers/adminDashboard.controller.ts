@@ -26,13 +26,19 @@ export class AdminDashboardController {
   // Get system stats
   async getStats(req: Request, res: Response) {
     try {
+      console.log('📊 Admin dashboard stats requested by:', (req as any).admin?.email);
       const data = await adminDashboardService.getDashboardStats();
+      console.log('✅ Dashboard stats retrieved successfully');
       res.json({
         success: true,
         data
       });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('🚨 Dashboard stats error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
     }
   }
 

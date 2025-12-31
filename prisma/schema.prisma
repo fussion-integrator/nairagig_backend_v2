@@ -164,6 +164,7 @@ model User {
   sponsorshipTier           SponsorshipTier?          @relation(fields: [subscriptionTier], references: [name])
   wallets                   Wallet[]
   twoFactorCodes            TwoFactorCode[]
+  jobActivityLogs         JobActivityLog[]      @relation("JobActivityPerformer")
 
   @@map("users")
 }
@@ -319,6 +320,11 @@ model Job {
   referenceLinks      Json             @default("[]")
   timeline            Json             @default("[]")
   managedByNairagig   Boolean          @default(false)
+  isFlagged           Boolean          @default(false)
+  flagReason          String?
+  flaggedAt           DateTime?
+  flaggedBy           String?
+  publishedAt         DateTime?
   applications        JobApplication[]
   questions           JobQuestion[]
   awardedFreelancer   User?            @relation("AwardedJobs", fields: [awardedTo], references: [id])
@@ -326,6 +332,10 @@ model Job {
   client              User             @relation("ClientJobs", fields: [clientId], references: [id])
   project             Project?
   bookmarks           JobBookmark[]
+  conversations       Conversation[]   @relation("JobConversations")
+  disputes            Dispute[]        @relation("JobDisputes")
+  payments            Transaction[]    @relation("JobPayments")
+  activityLogs        JobActivityLog[]
 
   @@map("jobs")
 }
@@ -524,8 +534,10 @@ model Transaction {
   relatedEntityId   String?
   relatedEntityType String?
   walletId          String?
+  jobId             String?
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   wallet            Wallet?           @relation(fields: [walletId], references: [id])
+  job               Job?              @relation("JobPayments", fields: [jobId], references: [id])
 
   @@map("transactions")
 }
@@ -638,11 +650,26 @@ model PaymentHistory {
   @@map("payment_history")
 }
 
+model JobActivityLog {
+  id          String   @id @default(uuid())
+  jobId       String
+  action      String
+  description String
+  metadata    Json     @default("{}")
+  performedBy String?
+  createdAt   DateTime @default(now())
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  performer   User?    @relation("JobActivityPerformer", fields: [performedBy], references: [id])
+
+  @@map("job_activity_logs")
+}
+
 model Conversation {
   id                 String                    @id @default(uuid())
   type               ConversationType          @default(DIRECT)
   projectId          String?
   challengeId        String?
+  jobId              String?
   title              String?
   description        String?
   status             ConversationStatus        @default(ACTIVE)
@@ -663,6 +690,7 @@ model Conversation {
   settings           ConversationSettings?
   challenge          Challenge?                @relation(fields: [challengeId], references: [id])
   project            Project?                  @relation(fields: [projectId], references: [id])
+  job                Job?                      @relation("JobConversations", fields: [jobId], references: [id])
   messages           Message[]
 
   @@map("conversations")
@@ -1299,6 +1327,7 @@ model Dispute {
   id            String            @id @default(uuid())
   contractId    String?
   projectId     String?
+  jobId         String?
   raisedBy      String
   againstUserId String
   title         String
@@ -1315,6 +1344,7 @@ model Dispute {
   againstUser   User              @relation("DisputesAgainst", fields: [againstUserId], references: [id])
   contract      Contract?         @relation(fields: [contractId], references: [id])
   project       Project?          @relation(fields: [projectId], references: [id])
+  job           Job?              @relation("JobDisputes", fields: [jobId], references: [id])
   raisedByUser  User              @relation("RaisedDisputes", fields: [raisedBy], references: [id])
   resolver      User?             @relation("ResolvedDisputes", fields: [resolvedBy], references: [id])
 
@@ -1426,6 +1456,7 @@ enum JobStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  CLOSED
   DISPUTED
 }
 

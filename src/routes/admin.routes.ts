@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller';
-import { authenticateAdmin, requireSuperAdmin } from '../middleware/adminAuth';
+import { authenticateAdmin } from '../middleware/adminAuth';
 import passport from 'passport';
 
 const router = Router();
@@ -28,10 +28,10 @@ router.use(authenticateAdmin);
 router.get('/me', adminController.me.bind(adminController));
 router.post('/logout', adminController.logout.bind(adminController));
 
-// Super admin only routes
-router.post('/invite', requireSuperAdmin, adminController.inviteAdmin.bind(adminController));
-router.get('/list', requireSuperAdmin, adminController.getAdmins.bind(adminController));
-router.get('/invitations', requireSuperAdmin, adminController.getInvitations.bind(adminController));
-router.put('/:adminId/permissions', requireSuperAdmin, adminController.updatePermissions.bind(adminController));
+// Admin management routes (no permission checks)
+router.post('/invite', adminController.inviteAdmin.bind(adminController));
+router.get('/list', adminController.getAdmins.bind(adminController));
+router.get('/invitations', adminController.getInvitations.bind(adminController));
+router.put('/:adminId/permissions', adminController.updatePermissions.bind(adminController));
 
 export default router;

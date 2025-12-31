@@ -69,6 +69,12 @@ export class AuthController {
           const sessionToken = adminService.generateSessionToken();
           const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+          // Clean up any existing sessions for this admin first
+          await prisma.adminSession.updateMany({
+            where: { adminId: admin.id },
+            data: { isActive: false }
+          });
+
           await prisma.adminSession.create({
             data: {
               adminId: admin.id,
@@ -95,18 +101,20 @@ export class AuthController {
             }
           });
 
-          // Set httpOnly cookies directly
+          // Set cookies with proper domain settings for cross-port access
           res.cookie('admin_access_token', sessionToken, {
-            httpOnly: true,
+            httpOnly: false, // Allow JavaScript access for cross-port development
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
+            domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
             maxAge: 15 * 60 * 1000 // 15 minutes
           });
 
           res.cookie('admin_refresh_token', sessionToken, {
-            httpOnly: true,
+            httpOnly: false, // Allow JavaScript access for cross-port development
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
+            domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
           });
 
@@ -143,6 +151,12 @@ export class AuthController {
         const sessionToken = adminService.generateSessionToken();
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+        // Clean up any existing sessions for this admin first
+        await prisma.adminSession.updateMany({
+          where: { adminId: admin.id },
+          data: { isActive: false }
+        });
+
         await prisma.adminSession.create({
           data: {
             adminId: admin.id,
@@ -169,18 +183,20 @@ export class AuthController {
           }
         });
 
-        // Set httpOnly cookies directly
+        // Set cookies with proper domain settings for cross-port access
         res.cookie('admin_access_token', sessionToken, {
-          httpOnly: true,
+          httpOnly: false, // Allow JavaScript access for cross-port development
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
           maxAge: 15 * 60 * 1000 // 15 minutes
         });
 
         res.cookie('admin_refresh_token', sessionToken, {
-          httpOnly: true,
+          httpOnly: false, // Allow JavaScript access for cross-port development
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
           maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
