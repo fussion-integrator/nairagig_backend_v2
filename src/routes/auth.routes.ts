@@ -26,9 +26,6 @@ router.get('/linkedin/callback', passport.authenticate('linkedin', { failureRedi
 router.get('/apple', passport.authenticate('apple'));
 router.get('/apple/callback', passport.authenticate('apple', { failureRedirect: '/login' }), authController.oauthCallback.bind(authController));
 
-// JWT Token endpoint for OAuth users
-router.post('/oauth/token', authController.generateOAuthToken.bind(authController));
-
 // Token management endpoints
 router.post('/set-tokens', authController.setTokens.bind(authController));
 router.post('/clear-tokens', authController.clearTokens.bind(authController));

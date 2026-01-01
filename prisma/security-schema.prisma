@@ -1,0 +1,101 @@
+// Add these models to your existing prisma/schema.prisma file
+
+model SecurityIncident {
+  id          String   @id @default(cuid())
+  type        String   // CSRF_ATTACK, SESSION_HIJACKING, etc.
+  description String
+  ipAddress   String
+  userAgent   String
+  severity    String   // LOW, MEDIUM, HIGH, CRITICAL
+  userId      String?
+  metadata    Json?
+  resolved    Boolean  @default(false)
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([ipAddress])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("security_incidents")
+}
+
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  severity    String   // LOW, MEDIUM, HIGH, CRITICAL
+  description String
+  eventCount  Int
+  metadata    Json?
+  acknowledged Boolean @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([severity])
+  @@index([createdAt])
+  @@map("security_alerts")
+}
+
+model BlockedIP {
+  id          String    @id @default(cuid())
+  ipAddress   String    @unique
+  reason      String
+  severity    String    // LOW, MEDIUM, HIGH, CRITICAL
+  blockedUntil DateTime?
+  permanent   Boolean   @default(false)
+  blockedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ipAddress])
+  @@index([blockedUntil])
+  @@map("blocked_ips")
+}
+
+// Update existing UserSession model to include security fields
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  fingerprint  String?  // Device fingerprint for hijacking detection
+  ipAddress    String
+  userAgent    String
+  location     String?
+  deviceInfo   String?
+  isActive     Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, userAgent])
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("user_sessions")
+}
+
+// Add security fields to existing User model
+model User {
+  // ... existing fields ...
+  
+  // Security enhancements
+  loginAttempts    Int       @default(0)
+  lockedUntil      DateTime?
+  twoFactorAuth    Boolean   @default(false)
+  twoFactorSecret  String?
+  loginAlerts      Boolean   @default(true)
+  securityLevel    String    @default("STANDARD") // STANDARD, HIGH, MAXIMUM
+  
+  // Relations
+  sessions         UserSession[]
+  securityIncidents SecurityIncident[]
+  
+  // ... rest of existing model ...
+}

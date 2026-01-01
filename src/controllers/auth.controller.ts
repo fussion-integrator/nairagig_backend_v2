@@ -1,11 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '@/config/database';
 import { config } from '@/config/config';
 import { ApiError } from '@/utils/ApiError';
 import { logger } from '@/utils/logger';
 import { emailService } from '@/services/email.service';
 import { AdminService } from '@/services/admin.service';
+import { SecurityLogger, SecurityEventType, SecuritySeverity } from '@/utils/securityLogger';
+import { FingerprintUtils } from '@/utils/fingerprint';
+import { InputSanitizer } from '@/utils/inputSanitizer';
+import { AuthService } from '@/services/auth.service';
 
 const adminService = new AdminService();
 
@@ -15,207 +20,63 @@ export class AuthController {
       const user = req.user as any;
       
       if (!user) {
+        await SecurityLogger.logAuth(SecurityEventType.LOGIN_FAILURE, req, undefined, {
+          reason: 'OAuth callback failed - no user data'
+        });
         throw ApiError.unauthorized('Authentication failed');
       }
 
-      const payload = { userId: user.id };
-      const accessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-      const refreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
+      // Log successful OAuth authentication
+      await SecurityLogger.logAuth(SecurityEventType.LOGIN_SUCCESS, req, user.id, {
+        provider: user.authProvider || 'unknown',
+        isNewUser: user.createdAt && (new Date().getTime() - new Date(user.createdAt).getTime()) < 60000
+      });
 
-      // Check if this is the super admin email - auto-create if needed
-      if (user.email === 'fussion.integration@gmail.com') {
-        let admin = await prisma.admin.findUnique({
-          where: { email: user.email },
-          include: { permissions: true }
-        });
-
-        // Auto-create super admin if doesn't exist
-        if (!admin) {
-          admin = await prisma.admin.create({
-            data: {
-              email: user.email,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              role: 'SUPER_ADMIN',
-              status: 'ACTIVE',
-              activatedAt: new Date()
-            },
-            include: { permissions: true }
-          });
-
-          // Grant all permissions to super admin
-          const { Permission } = await import('@prisma/client');
-          const allPermissions = Object.values(Permission);
-          await prisma.adminPermission.createMany({
-            data: allPermissions.map(permission => ({
-              adminId: admin!.id,
-              permission,
-              grantedBy: admin!.id
-            }))
-          });
-
-          // Reload admin with permissions
-          admin = await prisma.admin.findUnique({
-            where: { id: admin.id },
-            include: { permissions: true }
-          });
-        }
-
-        if (admin && admin.status === 'ACTIVE') {
-          // This is an admin login - use admin login flow
-          logger.info(`Admin OAuth login: ${admin.email}`);
-          
-          // Create admin session using AdminService
-          const sessionToken = adminService.generateSessionToken();
-          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-          // Clean up any existing sessions for this admin first
-          await prisma.adminSession.updateMany({
-            where: { adminId: admin.id },
-            data: { isActive: false }
-          });
-
-          await prisma.adminSession.create({
-            data: {
-              adminId: admin.id,
-              token: sessionToken,
-              ipAddress: req.ip || 'unknown',
-              userAgent: req.headers['user-agent'],
-              expiresAt
-            }
-          });
-          
-          // Update admin last login
-          await prisma.admin.update({
-            where: { id: admin.id },
-            data: { lastLoginAt: new Date() }
-          });
-
-          // Log admin login
-          await prisma.adminLoginHistory.create({
-            data: {
-              adminId: admin.id,
-              ipAddress: req.ip || 'unknown',
-              userAgent: req.headers['user-agent'],
-              status: 'SUCCESS'
-            }
-          });
-
-          // Set cookies with proper domain settings for cross-port access
-          res.cookie('admin_access_token', sessionToken, {
-            httpOnly: false, // Allow JavaScript access for cross-port development
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
-            maxAge: 15 * 60 * 1000 // 15 minutes
-          });
-
-          res.cookie('admin_refresh_token', sessionToken, {
-            httpOnly: false, // Allow JavaScript access for cross-port development
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-          });
-
-          // Redirect to admin callback with tokens
-          const adminData = encodeURIComponent(JSON.stringify({
-            id: admin.id,
-            email: admin.email,
-            firstName: admin.firstName,
-            lastName: admin.lastName,
-            role: admin.role
-          }));
-          
-          const tokens = encodeURIComponent(JSON.stringify({
-            accessToken: sessionToken,
-            refreshToken: sessionToken
-          }));
-
-          const adminCallbackUrl = `http://localhost:3001/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
-          return res.redirect(adminCallbackUrl);
-        }
-      }
-
-      // Check if this is an existing admin (non-super admin)
+      // Check if this is an admin (super admin or regular admin)
       const admin = await prisma.admin.findUnique({
         where: { email: user.email },
         include: { permissions: true }
       });
 
+      // Auto-create super admin if needed
+      if (user.email === 'fussion.integration@gmail.com' && !admin) {
+        const newAdmin = await prisma.admin.create({
+          data: {
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: 'SUPER_ADMIN',
+            status: 'ACTIVE',
+            activatedAt: new Date()
+          },
+          include: { permissions: true }
+        });
+
+        // Grant all permissions to super admin
+        const { Permission } = await import('@prisma/client');
+        const allPermissions = Object.values(Permission);
+        await prisma.adminPermission.createMany({
+          data: allPermissions.map(permission => ({
+            adminId: newAdmin.id,
+            permission,
+            grantedBy: newAdmin.id
+          }))
+        });
+
+        // Use the newly created admin
+        const finalAdmin = await prisma.admin.findUnique({
+          where: { id: newAdmin.id },
+          include: { permissions: true }
+        });
+        
+        if (finalAdmin) {
+          return this.handleAdminLogin(req, res, finalAdmin);
+        }
+      }
+
+      // Handle existing admin login
       if (admin && admin.status === 'ACTIVE') {
-        // This is an admin login - use admin login flow
-        logger.info(`Admin OAuth login: ${admin.email}`);
-        
-        // Create admin session using AdminService
-        const sessionToken = adminService.generateSessionToken();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-        // Clean up any existing sessions for this admin first
-        await prisma.adminSession.updateMany({
-          where: { adminId: admin.id },
-          data: { isActive: false }
-        });
-
-        await prisma.adminSession.create({
-          data: {
-            adminId: admin.id,
-            token: sessionToken,
-            ipAddress: req.ip || 'unknown',
-            userAgent: req.headers['user-agent'],
-            expiresAt
-          }
-        });
-        
-        // Update admin last login
-        await prisma.admin.update({
-          where: { id: admin.id },
-          data: { lastLoginAt: new Date() }
-        });
-
-        // Log admin login
-        await prisma.adminLoginHistory.create({
-          data: {
-            adminId: admin.id,
-            ipAddress: req.ip || 'unknown',
-            userAgent: req.headers['user-agent'],
-            status: 'SUCCESS'
-          }
-        });
-
-        // Set cookies with proper domain settings for cross-port access
-        res.cookie('admin_access_token', sessionToken, {
-          httpOnly: false, // Allow JavaScript access for cross-port development
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
-          maxAge: 15 * 60 * 1000 // 15 minutes
-        });
-
-        res.cookie('admin_refresh_token', sessionToken, {
-          httpOnly: false, // Allow JavaScript access for cross-port development
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
-          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-
-        // Redirect to admin callback with tokens
-        const adminData = encodeURIComponent(JSON.stringify({
-          id: admin.id,
-          email: admin.email,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          role: admin.role
-        }));
-        
-        const tokens = encodeURIComponent(JSON.stringify({
-          accessToken: sessionToken,
-          refreshToken: sessionToken
-        }));
-
-        const adminCallbackUrl = `http://localhost:3001/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
-        return res.redirect(adminCallbackUrl);
+        return this.handleAdminLogin(req, res, admin);
       }
 
       const isNewUser = user.createdAt && (new Date().getTime() - new Date(user.createdAt).getTime()) < 60000;
@@ -225,9 +86,9 @@ export class AuthController {
         data: { lastLoginAt: new Date() }
       });
 
-      // Record login session and history
+      // Record login session and history with enhanced security
       const loginData = await this.recordLoginSession(req, user.id, 'SUCCESS');
-
+      
       // Send welcome email for new users
       if (isNewUser) {
         await emailService.sendWelcomeEmail(
@@ -270,6 +131,12 @@ export class AuthController {
         await this.checkAndSendLoginAlert(user, loginData);
       }
 
+      // Generate enterprise tokens
+      const { accessToken, refreshToken } = AuthService.generateTokens(user.id);
+      
+      // Set secure cookies
+      AuthService.setCookies(res, accessToken, refreshToken);
+
       logger.info(`OAuth login successful: ${user.email}`);
 
       const userData = encodeURIComponent(JSON.stringify({
@@ -292,56 +159,9 @@ export class AuthController {
     }
   }
 
-  async generateOAuthToken(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        throw ApiError.badRequest('Email is required');
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          profileImageUrl: true
-        }
-      });
-
-      if (!user) {
-        throw ApiError.notFound('User not found');
-      }
-
-      const payload = { userId: user.id };
-      const accessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-      const refreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
-
-      res.json({
-        success: true,
-        data: {
-          user,
-          tokens: {
-            accessToken,
-            refreshToken
-          }
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async verifyToken(req: Request, res: Response, next: NextFunction) {
     try {
-      let token = req.header('Authorization')?.replace('Bearer ', '');
-      
-      if (!token) {
-        token = req.cookies?.access_token;
-      }
+      let token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.access_token;
 
       if (!token) {
         return res.status(401).json({
@@ -350,7 +170,14 @@ export class AuthController {
         });
       }
 
-      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
+      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string, type?: string };
+      
+      if (decoded.type === 'refresh') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token type'
+        });
+      }
       
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
@@ -438,12 +265,7 @@ export class AuthController {
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      let refreshToken = req.body.refreshToken;
-      
-      // Try to get refresh token from httpOnly cookie if not in body
-      if (!refreshToken) {
-        refreshToken = req.cookies?.refresh_token;
-      }
+      let refreshToken = req.body.refreshToken || req.cookies?.refresh_token;
 
       if (!refreshToken) {
         return res.status(401).json({
@@ -452,7 +274,14 @@ export class AuthController {
         });
       }
 
-      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret as string) as { userId: string };
+      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret as string) as { userId: string, type?: string };
+      
+      if (decoded.type !== 'refresh') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token type'
+        });
+      }
       
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
@@ -462,40 +291,28 @@ export class AuthController {
           firstName: true,
           lastName: true,
           role: true,
+          status: true,
           profileImageUrl: true
         }
       });
 
-      if (!user) {
+      if (!user || user.status !== 'ACTIVE') {
         return res.status(401).json({
           success: false,
-          message: 'Invalid refresh token'
+          message: 'Invalid or inactive user'
         });
       }
 
-      const payload = { userId: user.id };
-      const newAccessToken = (jwt.sign as any)(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-      const newRefreshToken = (jwt.sign as any)(payload, config.jwtRefreshSecret, { expiresIn: config.jwtRefreshExpiresIn });
+      // Generate new tokens using AuthService
+      const { accessToken, refreshToken: newRefreshToken } = AuthService.generateTokens(user.id);
 
       // Set new tokens as httpOnly cookies
-      res.cookie('access_token', newAccessToken, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('refresh_token', newRefreshToken, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      AuthService.setCookies(res, accessToken, newRefreshToken);
 
       res.json({
         success: true,
         data: {
-          accessToken: newAccessToken,
+          accessToken,
           refreshToken: newRefreshToken,
           user
         }
@@ -516,20 +333,8 @@ export class AuthController {
         throw ApiError.badRequest('Missing required token data');
       }
 
-      // Set httpOnly cookies
-      res.cookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        sameSite: 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: config.nodeEnv === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
+      // Use AuthService for consistent cookie setting
+      AuthService.setCookies(res, accessToken, refreshToken);
 
       res.json({ success: true, message: 'Tokens set successfully' });
     } catch (error) {
@@ -539,8 +344,16 @@ export class AuthController {
 
   async clearTokens(req: Request, res: Response, next: NextFunction) {
     try {
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+      };
+
+      res.clearCookie('access_token', cookieOptions);
+      res.clearCookie('refresh_token', cookieOptions);
       res.json({ success: true, message: 'Tokens cleared successfully' });
     } catch (error) {
       next(error);
@@ -554,7 +367,7 @@ export class AuthController {
       const deviceInfo = this.parseUserAgent(userAgent);
       const location = await this.getLocationFromIP(ipAddress);
 
-      // Record login history
+      // Record login history only
       await prisma.loginHistory.create({
         data: {
           userId,
@@ -565,30 +378,6 @@ export class AuthController {
           status
         }
       });
-
-      // Create/update active session only for successful logins
-      if (status === 'SUCCESS') {
-        await prisma.userSession.upsert({
-          where: {
-            userId_userAgent: {
-              userId,
-              userAgent
-            }
-          },
-          update: {
-            lastActiveAt: new Date(),
-            isActive: true
-          },
-          create: {
-            userId,
-            deviceInfo,
-            ipAddress,
-            location,
-            userAgent,
-            isActive: true
-          }
-        });
-      }
 
       return { deviceInfo, location, ipAddress, userAgent };
     } catch (error) {
@@ -655,11 +444,81 @@ export class AuthController {
   }
 
   private parseUserAgent(userAgent: string): string {
-    if (userAgent.includes('Chrome')) return 'Chrome on ' + (userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Mac') ? 'MacOS' : userAgent.includes('Linux') ? 'Linux' : 'Unknown');
-    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari on ' + (userAgent.includes('iPhone') ? 'iPhone' : userAgent.includes('iPad') ? 'iPad' : 'MacOS');
-    if (userAgent.includes('Firefox')) return 'Firefox on ' + (userAgent.includes('Windows') ? 'Windows' : userAgent.includes('Mac') ? 'MacOS' : 'Linux');
-    if (userAgent.includes('Edge')) return 'Edge on Windows';
-    return 'Unknown device';
+    return AuthService.parseUserAgent(userAgent);
+  }
+
+  private async handleAdminLogin(req: Request, res: Response, admin: any) {
+    logger.info(`Admin OAuth login: ${admin.email}`);
+    
+    // Create admin session using AdminService
+    const sessionToken = adminService.generateSessionToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Clean up any existing sessions for this admin first
+    await prisma.adminSession.updateMany({
+      where: { adminId: admin.id },
+      data: { isActive: false }
+    });
+
+    await prisma.adminSession.create({
+      data: {
+        adminId: admin.id,
+        token: sessionToken,
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'],
+        expiresAt
+      }
+    });
+    
+    // Update admin last login
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() }
+    });
+
+    // Log admin login
+    await prisma.adminLoginHistory.create({
+      data: {
+        adminId: admin.id,
+        ipAddress: req.ip || 'unknown',
+        userAgent: req.headers['user-agent'],
+        status: 'SUCCESS'
+      }
+    });
+
+    // Set cookies with proper domain settings for cross-port access
+    res.cookie('admin_access_token', sessionToken, {
+      httpOnly: false, // Allow JavaScript access for cross-port development
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
+      maxAge: 15 * 60 * 1000 // 15 minutes
+    });
+
+    res.cookie('admin_refresh_token', sessionToken, {
+      httpOnly: false, // Allow JavaScript access for cross-port development
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : 'localhost',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    // Redirect to admin callback with tokens
+    const adminData = encodeURIComponent(JSON.stringify({
+      id: admin.id,
+      email: admin.email,
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      role: admin.role
+    }));
+    
+    const tokens = encodeURIComponent(JSON.stringify({
+      accessToken: sessionToken,
+      refreshToken: sessionToken
+    }));
+
+    const adminCallbackUrl = `http://localhost:3001/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
+    return res.redirect(adminCallbackUrl);
   }
 
   private async getLocationFromIP(ipAddress: string): Promise<string> {

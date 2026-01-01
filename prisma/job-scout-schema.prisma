@@ -1,0 +1,60 @@
+// Add these models to your existing schema.prisma
+
+model JobMatch {
+  id          String   @id @default(cuid())
+  userId      String
+  jobId       String
+  title       String
+  company     String
+  location    String?
+  workType    WorkType @default(REMOTE)
+  description String?
+  skills      String[] // Array of skills
+  url         String
+  source      String
+  matchScore  Int      // 0-100
+  postedDate  DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, jobId])
+  @@map("job_matches")
+}
+
+model UserJobPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  jobTitle        String?
+  location        String?
+  workType        WorkType?
+  experienceLevel ExperienceLevel?
+  skills          String[] // Array of preferred skills
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String   @default("USD")
+  industries      String[] // Array of preferred industries
+  companySize     CompanySize?
+  jobAlerts       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_job_preferences")
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum ExperienceLevel {
+  ENTRY
+  INTERMEDIATE
+  EXPERT
+}

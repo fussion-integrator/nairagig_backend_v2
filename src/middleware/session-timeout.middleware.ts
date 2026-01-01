@@ -21,8 +21,14 @@ export const sessionTimeoutMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    // Skip for OAuth routes
-    if (req.path.includes('/auth/google') || req.path.includes('/auth/linkedin') || req.path.includes('/auth/apple')) {
+    // Skip for OAuth routes and auth endpoints
+    if (req.path.includes('/auth/google') || 
+        req.path.includes('/auth/linkedin') || 
+        req.path.includes('/auth/apple') ||
+        req.path.includes('/auth/set-tokens') ||
+        req.path.includes('/auth/clear-tokens') ||
+        req.path.includes('/auth/verify') ||
+        req.path.includes('/auth/refresh')) {
       return next();
     }
 

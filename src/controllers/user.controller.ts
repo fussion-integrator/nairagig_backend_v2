@@ -619,13 +619,14 @@ export class UserController {
         specialty,
         portfolioUrl,
         yearsOfExperience,
-        socialLinks
+        socialLinks,
+        role
       } = req.body;
 
       // Get current user data for comparison
       const currentUser = await prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true, firstName: true, lastName: true }
+        select: { email: true, firstName: true, lastName: true, role: true }
       });
 
       // Check if phone number is already taken by another user
@@ -658,9 +659,15 @@ export class UserController {
           availabilityStatus,
           specialty,
           portfolioUrl,
-          yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience.toString()) : null
+          yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience.toString()) : null,
+          role: role && ['FREELANCER', 'CLIENT'].includes(role) ? role : undefined
         }
       });
+
+      // Log role change if it occurred
+      if (role && role !== currentUser?.role) {
+        logger.info(`User role changed: ${userId} from ${currentUser?.role} to ${role}`);
+      }
 
       // Check profile completion and send activation email if needed
       const profileCompletion = this.calculateProfileCompletion(updatedUser, skills, portfolios);
@@ -732,7 +739,15 @@ export class UserController {
       // Fetch updated user with relations
       const result = await prisma.user.findUnique({
         where: { id: userId },
-        include: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          profileImageUrl: true,
+          role: true,
+          status: true,
           skills: {
             select: {
               id: true,
@@ -765,7 +780,16 @@ export class UserController {
 
       res.json({
         success: true,
-        data: result
+        data: result,
+        // Include user data for frontend to update localStorage
+        user: {
+          id: result?.id,
+          firstName: result?.firstName,
+          lastName: result?.lastName,
+          email: result?.email,
+          role: result?.role,
+          avatar: result?.profileImageUrl
+        }
       });
     } catch (error) {
       logger.error('Profile update error:', error);

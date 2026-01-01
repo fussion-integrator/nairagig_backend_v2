@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '@/config/database';
 import { ApiError } from '@/utils/ApiError';
+import { logger } from '@/utils/logger';
 
 export class SearchController {
   async globalSearch(req: Request, res: Response, next: NextFunction) {
@@ -384,7 +385,7 @@ export class SearchController {
 
       res.json({ success: true });
     } catch (error) {
-      logger.warn('Click tracking failed');
+      console.warn('Click tracking failed');
       res.json({ success: true });
     }
   }

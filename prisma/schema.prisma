@@ -165,21 +165,25 @@ model User {
   wallets                   Wallet[]
   twoFactorCodes            TwoFactorCode[]
   jobActivityLogs         JobActivityLog[]      @relation("JobActivityPerformer")
+  securityIncidents         SecurityIncident[]
 
   @@map("users")
 }
 
 model UserSession {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
+  token        String?   @unique  // Make optional initially
   deviceInfo   String
   ipAddress    String
   location     String?
   userAgent    String?
-  isActive     Boolean  @default(true)
-  lastActiveAt DateTime @default(now())
-  createdAt    DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprint  String?   // Add fingerprint field
+  expiresAt    DateTime? // Make optional initially
+  isActive     Boolean   @default(true)
+  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, userAgent])
   @@map("user_sessions")
@@ -1382,6 +1386,21 @@ model UserVerification {
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_verifications")
+}
+
+model SecurityIncident {
+  id          String   @id @default(uuid())
+  type        String
+  description String
+  ipAddress   String
+  userAgent   String?
+  severity    String   @default("MEDIUM")
+  userId      String?
+  metadata    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@map("security_incidents")
 }
 
 model TwoFactorCode {
