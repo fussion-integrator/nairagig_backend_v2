@@ -8,6 +8,9 @@ const paymentController = new PaymentController();
 // Initialize payment
 router.post('/initialize', authenticate, paymentController.initializePayment.bind(paymentController));
 
+// Check wallet balance for payment decisions
+router.get('/wallet-balance', authenticate, paymentController.checkWalletBalance.bind(paymentController));
+
 // Verify payment
 router.get('/verify/:reference', authenticate, paymentController.verifyPayment.bind(paymentController));
 

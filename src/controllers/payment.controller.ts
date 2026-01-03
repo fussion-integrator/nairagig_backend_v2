@@ -14,7 +14,7 @@ export class PaymentController {
         throw ApiError.unauthorized('User not authenticated');
       }
 
-      const { amount, type, metadata } = req.body;
+      const { amount, type, metadata, paymentMethod } = req.body;
 
       if (!amount || amount <= 0) {
         throw ApiError.badRequest('Invalid amount');
@@ -33,6 +33,97 @@ export class PaymentController {
         throw ApiError.notFound('User not found');
       }
 
+      // Get user's current wallet balance in real-time
+      const wallet = await prisma.wallet.findFirst({
+        where: { 
+          userId,
+          currency: 'NGN'
+        }
+      });
+      
+      const walletBalance = wallet?.availableBalance || 0;
+      const paymentAmount = Number(amount);
+      const hasWalletFunds = walletBalance >= paymentAmount;
+      
+      // For project payments, check if user has sufficient wallet funds
+      if (type === 'PROJECT_PAYMENT' && !paymentMethod && hasWalletFunds) {
+        return res.json({
+          success: true,
+          requiresPaymentMethod: true,
+          data: {
+            paymentAmount,
+            walletBalance: Number(walletBalance),
+            hasWalletFunds,
+            paymentOptions: [
+              {
+                method: 'wallet',
+                label: 'Pay from Wallet',
+                available: true,
+                balance: Number(walletBalance)
+              },
+              {
+                method: 'paystack',
+                label: 'Pay with Card/Bank',
+                available: true
+              }
+            ]
+          }
+        });
+      }
+      
+      // Handle wallet payment for project payments
+      if (paymentMethod === 'wallet' && type === 'PROJECT_PAYMENT') {
+        if (!hasWalletFunds) {
+          throw ApiError.badRequest(`Insufficient wallet balance. Required: ₦${paymentAmount.toLocaleString()}, Available: ₦${Number(walletBalance).toLocaleString()}`);
+        }
+        
+        // Create completed transaction
+        const transaction = await prisma.transaction.create({
+          data: {
+            userId,
+            walletId: wallet!.id,
+            amount: paymentAmount,
+            type: 'PAYMENT',
+            status: 'COMPLETED',
+            description: 'Project payment from wallet',
+            processedAt: new Date(),
+            gatewayProvider: 'WALLET',
+            metadata: {
+              paymentType: type,
+              paymentMethod: 'wallet',
+              ...metadata
+            }
+          }
+        });
+        
+        // Deduct from wallet
+        await prisma.wallet.update({
+          where: { id: wallet!.id },
+          data: {
+            availableBalance: {
+              decrement: paymentAmount
+            }
+          }
+        });
+        
+        // Process the payment (e.g., update project milestone)
+        await this.processSuccessfulPayment(transaction);
+        
+        logger.info(`Wallet payment processed: ${transaction.id} for user ${userId}`);
+        
+        return res.json({
+          success: true,
+          message: 'Payment processed successfully from wallet',
+          data: {
+            transactionId: transaction.id,
+            paymentMethod: 'wallet',
+            amountPaid: paymentAmount,
+            newWalletBalance: Number(walletBalance) - paymentAmount
+          }
+        });
+      }
+
+      // Handle Paystack payment (existing logic)
       const reference = paystackService.generateReference();
       const amountInKobo = paystackService.convertToKobo(amount);
 
@@ -48,6 +139,7 @@ export class PaymentController {
           gatewayProvider: 'PAYSTACK',
           metadata: {
             paymentType: type,
+            paymentMethod: 'paystack',
             ...metadata
           }
         }
@@ -75,7 +167,8 @@ export class PaymentController {
           transactionId: transaction.id,
           reference,
           authorizationUrl: paystackResponse.data.authorization_url,
-          accessCode: paystackResponse.data.access_code
+          accessCode: paystackResponse.data.access_code,
+          paymentMethod: 'paystack'
         }
       });
     } catch (error) {
@@ -368,6 +461,54 @@ export class PaymentController {
             total,
             pages: Math.ceil(total / Number(limit))
           }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async checkWalletBalance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        throw ApiError.unauthorized('User not authenticated');
+      }
+
+      const { amount } = req.query;
+
+      // Get user's current wallet balance in real-time
+      const wallet = await prisma.wallet.findFirst({
+        where: { 
+          userId,
+          currency: 'NGN'
+        }
+      });
+      
+      const walletBalance = wallet?.availableBalance || 0;
+      const requiredAmount = amount ? Number(amount) : 0;
+      const hasWalletFunds = walletBalance >= requiredAmount;
+      
+      res.json({
+        success: true,
+        data: {
+          walletBalance: Number(walletBalance),
+          requiredAmount,
+          hasWalletFunds,
+          shortfall: hasWalletFunds ? 0 : requiredAmount - Number(walletBalance),
+          paymentOptions: [
+            {
+              method: 'wallet',
+              label: 'Pay from Wallet',
+              available: hasWalletFunds,
+              balance: Number(walletBalance)
+            },
+            {
+              method: 'paystack',
+              label: 'Pay with Card/Bank',
+              available: true
+            }
+          ]
         }
       });
     } catch (error) {

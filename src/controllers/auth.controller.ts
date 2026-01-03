@@ -11,6 +11,7 @@ import { SecurityLogger, SecurityEventType, SecuritySeverity } from '@/utils/sec
 import { FingerprintUtils } from '@/utils/fingerprint';
 import { InputSanitizer } from '@/utils/inputSanitizer';
 import { AuthService } from '@/services/auth.service';
+import { ReferralService } from '@/services/referral.service';
 
 const adminService = new AdminService();
 
@@ -85,6 +86,11 @@ export class AuthController {
         where: { id: user.id },
         data: { lastLoginAt: new Date() }
       });
+
+      // Ensure user has referral code
+      if (isNewUser) {
+        await ReferralService.ensureUserHasReferralCode(user.id);
+      }
 
       // Record login session and history with enhanced security
       const loginData = await this.recordLoginSession(req, user.id, 'SUCCESS');

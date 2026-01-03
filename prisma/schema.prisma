@@ -7,22 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SponsorshipApplication {
-  id          String                       @id @default(uuid())
-  userId      String
-  tierId      String
-  fullName    String
-  email       String
-  reason      String
-  status      SponsorshipApplicationStatus @default(PENDING)
-  attachments Json                         @default("[]")
-  voiceNote   String?
-  createdAt   DateTime                     @default(now())
-  updatedAt   DateTime                     @updatedAt
-  tier        SponsorshipTier              @relation(fields: [tierId], references: [id])
-  user        User                         @relation(fields: [userId], references: [id])
+model SponsorshipRequest {
+  id                String                    @id @default(uuid())
+  userId            String
+  businessName      String
+  businessEmail     String
+  businessPhone     String?
+  businessWebsite   String?
+  businessCategory  String
+  businessSize      String
+  requestType       SponsorshipRequestType
+  sponsorshipGoals  String
+  targetAudience    String?
+  budgetRange       String?
+  preferredDuration String?
+  additionalInfo    String?
+  attachments       Json                      @default("[]")
+  status            SponsorshipRequestStatus  @default(PENDING)
+  priority          SponsorshipPriority       @default(MEDIUM)
+  adminNotes        String?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  approvedAmount    Decimal?
+  approvedDuration  String?
+  rejectionReason   String?
+  followUpDate      DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  user              User                      @relation(fields: [userId], references: [id])
+  reviewer          Admin?                    @relation("ReviewedSponsorshipRequests", fields: [reviewedBy], references: [id])
 
-  @@map("sponsorship_applications")
+  @@map("sponsorship_requests")
 }
 
 model SponsorshipTier {
@@ -35,8 +50,6 @@ model SponsorshipTier {
   isActive     Boolean                  @default(true)
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
-  applications SponsorshipApplication[]
-  users        User[]
 
   @@map("sponsorship_tiers")
 }
@@ -148,7 +161,7 @@ model User {
   reviewsReceived           Review[]                  @relation("ReviewsOfUser")
   reviews                   Review[]                  @relation("ReviewsByUser")
   rewards                   Reward[]
-  sponsorshipApplications   SponsorshipApplication[]
+  sponsorshipRequests       SponsorshipRequest[]
   transactions              Transaction[]
   achievements              UserAchievement[]
   analytics                 UserAnalytics[]
@@ -161,11 +174,19 @@ model User {
   streaks                   UserStreak[]
   verificationReviews       UserVerification[]        @relation("VerificationReviews")
   verification              UserVerification?
-  sponsorshipTier           SponsorshipTier?          @relation(fields: [subscriptionTier], references: [name])
   wallets                   Wallet[]
   twoFactorCodes            TwoFactorCode[]
   jobActivityLogs         JobActivityLog[]      @relation("JobActivityPerformer")
   securityIncidents         SecurityIncident[]
+  jobSearchLogs             JobSearchLog[]
+  savedJobs                 SavedJob[]
+  externalJobApplications   ExternalJobApplication[]
+  linkedInPosts             LinkedInPost[]
+  linkedInMilestones        LinkedInMilestone[]
+  facebookPosts             FacebookPost[]
+  facebookMilestones        FacebookMilestone[]
+  twitterPosts              TwitterPost[]
+  twitterMilestones         TwitterMilestone[]
 
   @@map("users")
 }
@@ -1886,6 +1907,31 @@ enum CampaignStatus {
   CANCELLED
 }
 
+enum SponsorshipRequestType {
+  BRAND_PARTNERSHIP
+  EVENT_SPONSORSHIP
+  CONTENT_COLLABORATION
+  PLATFORM_ADVERTISING
+  TALENT_ACQUISITION
+  COMMUNITY_BUILDING
+}
+
+enum SponsorshipRequestStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ON_HOLD
+  CANCELLED
+}
+
+enum SponsorshipPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 enum SponsorshipApplicationStatus {
   PENDING
   APPROVED
@@ -1946,6 +1992,207 @@ enum ContactStatus {
   CLOSED
 }
 
+// Job Search and Application Tracking Models
+model JobSearchLog {
+  id            String   @id @default(uuid())
+  userId        String
+  searchFilters Json
+  resultsCount  Int      @default(0)
+  searchedAt    DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("job_search_logs")
+}
+
+model SavedJob {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  jobTitle  String
+  company   String
+  jobData   String?  // JSON string of job details
+  savedAt   DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@map("saved_jobs")
+}
+
+model ExternalJobApplication {
+  id             String                    @id @default(uuid())
+  userId         String
+  jobId          String
+  jobTitle       String
+  company        String
+  applicationUrl String?
+  source         String                    // LinkedIn, Indeed, etc.
+  status         ExternalApplicationStatus @default(APPLIED)
+  appliedAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId, source])
+  @@map("external_job_applications")
+}
+
+model LinkedInPost {
+  id          String            @id @default(uuid())
+  userId      String
+  url         String
+  reactions   Int               @default(0)
+  comments    Int               @default(0)
+  status      LinkedInPostStatus @default(PENDING)
+  lastChecked DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, url])
+  @@map("linkedin_posts")
+}
+
+model LinkedInMilestone {
+  id         String                   @id @default(uuid())
+  userId     String
+  type       LinkedInMilestoneType
+  amount     Decimal
+  status     LinkedInMilestoneStatus  @default(PENDING)
+  claimed    Boolean                  @default(false)
+  claimedAt  DateTime?
+  approvedAt DateTime?
+  metadata   Json                     @default("{}")
+  createdAt  DateTime                 @default(now())
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("linkedin_milestones")
+}
+
+model FacebookPost {
+  id          String            @id @default(uuid())
+  userId      String
+  url         String
+  reactions   Int               @default(0)
+  comments    Int               @default(0)
+  status      FacebookPostStatus @default(PENDING)
+  lastChecked DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, url])
+  @@map("facebook_posts")
+}
+
+model FacebookMilestone {
+  id         String                   @id @default(uuid())
+  userId     String
+  type       FacebookMilestoneType
+  amount     Decimal
+  status     FacebookMilestoneStatus  @default(PENDING)
+  claimed    Boolean                  @default(false)
+  claimedAt  DateTime?
+  approvedAt DateTime?
+  metadata   Json                     @default("{}")
+  createdAt  DateTime                 @default(now())
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("facebook_milestones")
+}
+
+model TwitterPost {
+  id          String            @id @default(uuid())
+  userId      String
+  url         String
+  reactions   Int               @default(0)
+  comments    Int               @default(0)
+  status      TwitterPostStatus @default(PENDING)
+  lastChecked DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, url])
+  @@map("twitter_posts")
+}
+
+model TwitterMilestone {
+  id         String                   @id @default(uuid())
+  userId     String
+  type       TwitterMilestoneType
+  amount     Decimal
+  status     TwitterMilestoneStatus   @default(PENDING)
+  claimed    Boolean                  @default(false)
+  claimedAt  DateTime?
+  approvedAt DateTime?
+  metadata   Json                     @default("{}")
+  createdAt  DateTime                 @default(now())
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("twitter_milestones")
+}
+
+enum ExternalApplicationStatus {
+  APPLIED
+  VIEWED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  OFFER_RECEIVED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum LinkedInPostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LinkedInMilestoneType {
+  REACTIONS
+  COMMENTS
+}
+
+enum LinkedInMilestoneStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FacebookPostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FacebookMilestoneType {
+  REACTIONS
+  COMMENTS
+}
+
+enum FacebookMilestoneStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TwitterPostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TwitterMilestoneType {
+  REACTIONS
+  COMMENTS
+}
+
+enum TwitterMilestoneStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // Admin System Models
 model Admin {
   id                String              @id @default(uuid())
@@ -1978,6 +2225,7 @@ model Admin {
   suspender         Admin?              @relation("AdminSuspensions", fields: [suspendedBy], references: [id])
   suspendedAdmins   Admin[]             @relation("AdminSuspensions")
   sentInvitations   AdminInvitation[]   @relation("SentInvitations")
+  sponsorshipRequests       SponsorshipRequest[]      @relation("ReviewedSponsorshipRequests")
 
   @@map("admins")
 }

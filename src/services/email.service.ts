@@ -1102,6 +1102,37 @@ class EmailService {
       }
     });
   }
+
+  // Referral reward claim email
+  async sendReferralRewardClaimed(to: string, data: {
+    userName: string;
+    userEmail: string;
+    claimedAmount: number;
+    referralCount: number;
+    multiplier: number;
+    rewardPerReferral: number;
+    newBalance: number;
+    claimDate: string;
+    nextTierReferrals?: number;
+    nextTierMultiplier?: number;
+    walletUrl: string;
+    referralUrl: string;
+  }) {
+    const subject = `🎉 Referral Reward Claimed: ₦${data.claimedAmount.toLocaleString()}`;
+    const template = 'referral-reward-claimed';
+    
+    return this.sendEmail({
+      to,
+      subject,
+      template,
+      data: {
+        ...data,
+        unsubscribeUrl: `${process.env.FRONTEND_URL}/settings/notifications`,
+        privacyUrl: `${process.env.FRONTEND_URL}/privacy`,
+        supportEmail: 'contact@nairagig.com'
+      }
+    });
+  }
 }
 
 export const emailService = new EmailService();

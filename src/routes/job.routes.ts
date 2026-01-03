@@ -18,6 +18,7 @@ router.get('/bookmarks', jobController.getBookmarkedJobs.bind(jobController));
 router.post('/:id/bookmark', jobController.bookmarkJob.bind(jobController));
 router.delete('/:id/bookmark', jobController.unbookmarkJob.bind(jobController));
 router.get('/my-jobs', jobController.getMyJobs.bind(jobController));
+router.get('/award/wallet-balance', jobController.checkJobAwardBalance.bind(jobController));
 router.get('/:id', jobController.getJob.bind(jobController));
 router.post('/', authorize('CLIENT', 'FREELANCER'), jobController.createJob.bind(jobController));
 router.put('/:id', jobController.updateJob.bind(jobController));

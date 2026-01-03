@@ -32,6 +32,7 @@ import { fileRoutes } from '@/routes/file.routes';
 import { paymentRoutes } from '@/routes/payment.routes';
 import sponsorshipTierRoutes from '@/routes/sponsorship-tier.routes';
 import sponsorshipRoutes from '@/routes/sponsorship.routes';
+import sponsorshipRequestRoutes from '@/routes/sponsorship-request.routes';
 import { notificationRoutes } from '@/routes/notification.routes';
 import { settingsRoutes } from '@/routes/settings.routes';
 import { billingRoutes } from '@/routes/billing.routes';
@@ -59,6 +60,11 @@ import { sessionTimeoutMiddleware } from '@/middleware/session-timeout.middlewar
 import { logRoutes } from '@/routes/logs.routes';
 import interviewRoutes from '@/routes/interview.routes';
 import { subscriptionRoutes } from '@/routes/subscription.routes';
+import jobSearchRoutes from '@/routes/job-search.routes';
+import referralRoutes from '@/routes/referral.routes';
+import linkedInAmbassadorRoutes from '@/routes/linkedin-ambassador.routes';
+import facebookAmbassadorRoutes from '@/routes/facebook-ambassador.routes';
+import twitterAmbassadorRoutes from '@/routes/twitter-ambassador.routes';
 
 const app = express();
 const server = createServer(app);
@@ -204,6 +210,7 @@ app.use(`${apiPrefix}/files`, fileRoutes);
 app.use(`${apiPrefix}/payments`, paymentRoutes);
 app.use(`${apiPrefix}/sponsorship-tiers`, sponsorshipTierRoutes);
 app.use(`${apiPrefix}/sponsorship`, sponsorshipRoutes);
+app.use(`${apiPrefix}/sponsorship-requests`, sponsorshipRequestRoutes);
 app.use(`${apiPrefix}/notifications`, notificationRoutes);
 app.use(`${apiPrefix}/settings`, settingsRoutes);
 app.use(`${apiPrefix}/billing`, billingRoutes);
@@ -228,6 +235,11 @@ app.use(`${apiPrefix}/test`, testRoutes);
 app.use(`${apiPrefix}/interview`, interviewRoutes);
 app.use(`${apiPrefix}/logs`, logRoutes);
 app.use(`${apiPrefix}/subscriptions`, subscriptionRoutes);
+app.use(`${apiPrefix}/job-search`, jobSearchRoutes);
+app.use(`${apiPrefix}/referrals`, referralRoutes);
+app.use(`${apiPrefix}/linkedin-ambassador`, linkedInAmbassadorRoutes);
+app.use(`${apiPrefix}/facebook-ambassador`, facebookAmbassadorRoutes);
+app.use(`${apiPrefix}/twitter-ambassador`, twitterAmbassadorRoutes);
 app.use(`${apiPrefix}/notifications/bulk`, notificationBulkRoutes);
 
 // Error handling middleware

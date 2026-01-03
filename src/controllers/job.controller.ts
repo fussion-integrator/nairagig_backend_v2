@@ -5,6 +5,7 @@ import { logger } from '@/utils/logger';
 import { notificationService } from '../services/notification.service';
 import { emailService } from '@/services/email.service';
 import { ExperienceLevel, BudgetType, JobVisibility, JobStatus } from '@prisma/client';
+import { ReferralService } from '../services/referral.service';
 
 export class JobController {
   async getPublicJobs(req: Request, res: Response, next: NextFunction) {
@@ -522,6 +523,9 @@ export class JobController {
         data: { applicationCount: { increment: 1 } }
       });
 
+      // Trigger referral completion for first job application
+      await ReferralService.completeReferralOnAction(userId, 'FIRST_JOB_APPLICATION');
+
       // Send job application received email to client
       if (job.client && freelancer) {
         await emailService.sendJobApplicationReceived(
@@ -784,7 +788,7 @@ export class JobController {
   async awardJob(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;
-      const { jobId, freelancerId } = req.body;
+      const { jobId, freelancerId, paymentMethod } = req.body;
 
       const job = await prisma.job.findUnique({ 
         where: { id: jobId },
@@ -797,7 +801,149 @@ export class JobController {
       const freelancer = await prisma.user.findUnique({ where: { id: freelancerId } });
       if (!freelancer) throw ApiError.notFound('Freelancer not found');
 
-      // Award job and create project
+      const jobBudget = job.budgetMin || 0;
+      
+      // Get user's current wallet balance in real-time
+      const wallet = await prisma.wallet.findFirst({
+        where: { 
+          userId,
+          currency: 'NGN'
+        }
+      });
+      
+      const walletBalance = wallet?.availableBalance || 0;
+      const hasWalletFunds = walletBalance >= jobBudget;
+      
+      // If no payment method specified and user has sufficient wallet funds, return payment options
+      if (!paymentMethod && hasWalletFunds && jobBudget > 0) {
+        return res.json({
+          success: true,
+          requiresPaymentMethod: true,
+          data: {
+            jobBudget,
+            walletBalance: Number(walletBalance),
+            hasWalletFunds,
+            paymentOptions: [
+              {
+                method: 'wallet',
+                label: 'Pay from Wallet',
+                available: true,
+                balance: Number(walletBalance)
+              },
+              {
+                method: 'paystack',
+                label: 'Pay with Card/Bank',
+                available: true
+              }
+            ]
+          }
+        });
+      }
+      
+      // Handle wallet payment
+      if (paymentMethod === 'wallet') {
+        if (!hasWalletFunds) {
+          throw ApiError.badRequest(`Insufficient wallet balance. Required: ₦${jobBudget.toLocaleString()}, Available: ₦${Number(walletBalance).toLocaleString()}`);
+        }
+        
+        // Award job and create project with wallet payment
+        const [updatedJob, project] = await prisma.$transaction(async (tx) => {
+          const awardedJob = await tx.job.update({
+            where: { id: jobId },
+            data: {
+              awardedTo: freelancerId,
+              awardedAt: new Date(),
+              status: 'IN_PROGRESS'
+            }
+          });
+
+          const newProject = await tx.project.create({
+            data: {
+              title: job.title,
+              description: job.description,
+              clientId: userId,
+              freelancerId,
+              jobId,
+              agreedBudget: jobBudget,
+              status: 'ACTIVE'
+            }
+          });
+
+          // Create project conversation
+          await tx.conversation.create({
+            data: {
+              type: 'PROJECT',
+              projectId: newProject.id,
+              title: `Project: ${job.title}`,
+              participants: {
+                create: [
+                  { userId },
+                  { userId: freelancerId }
+                ]
+              }
+            }
+          });
+          
+          // Deduct from client's wallet
+          await tx.wallet.update({
+            where: { id: wallet!.id },
+            data: {
+              availableBalance: {
+                decrement: jobBudget
+              },
+              escrowBalance: {
+                increment: jobBudget
+              }
+            }
+          });
+          
+          // Create transaction record
+          await tx.transaction.create({
+            data: {
+              userId,
+              walletId: wallet!.id,
+              amount: jobBudget,
+              type: 'PAYMENT',
+              status: 'COMPLETED',
+              description: `Job award payment for "${job.title}"`,
+              processedAt: new Date(),
+              gatewayProvider: 'WALLET',
+              jobId,
+              metadata: {
+                paymentType: 'JOB_AWARD',
+                paymentMethod: 'wallet',
+                projectId: newProject.id,
+                freelancerId
+              }
+            }
+          });
+
+          return [awardedJob, newProject];
+        });
+
+        // Send job awarded email to freelancer
+        await emailService.sendJobAwarded(
+          freelancer.email!,
+          freelancer.firstName,
+          job.title,
+          jobBudget.toString(),
+          `${job.client.firstName} ${job.client.lastName}`
+        );
+
+        return res.json({ 
+          success: true, 
+          message: 'Job awarded successfully with wallet payment',
+          data: { 
+            job: updatedJob, 
+            project,
+            paymentMethod: 'wallet',
+            amountPaid: jobBudget,
+            newWalletBalance: Number(walletBalance) - jobBudget
+          } 
+        });
+      }
+      
+      // Handle regular job award (no upfront payment or Paystack payment)
       const [updatedJob, project] = await prisma.$transaction(async (tx) => {
         const awardedJob = await tx.job.update({
           where: { id: jobId },
@@ -815,7 +961,7 @@ export class JobController {
             clientId: userId,
             freelancerId,
             jobId,
-            agreedBudget: job.budgetMin || 0,
+            agreedBudget: jobBudget,
             status: 'ACTIVE'
           }
         });
@@ -843,7 +989,7 @@ export class JobController {
         freelancer.email!,
         freelancer.firstName,
         job.title,
-        (job.budgetMin || 0).toString(),
+        jobBudget.toString(),
         `${job.client.firstName} ${job.client.lastName}`
       );
 
@@ -1053,6 +1199,64 @@ export class JobController {
       );
 
       res.json({ success: true, data: updatedJob });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async checkJobAwardBalance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) throw ApiError.unauthorized('User not authenticated');
+
+      const { jobId } = req.query;
+      if (!jobId) throw ApiError.badRequest('Job ID is required');
+
+      const job = await prisma.job.findUnique({ where: { id: jobId as string } });
+      if (!job) throw ApiError.notFound('Job not found');
+      if (job.clientId !== userId) throw ApiError.forbidden('Access denied');
+
+      const jobBudget = job.budgetMin || 0;
+
+      // Get user's current wallet balance in real-time
+      const wallet = await prisma.wallet.findFirst({
+        where: { 
+          userId,
+          currency: 'NGN'
+        }
+      });
+      
+      const walletBalance = wallet?.availableBalance || 0;
+      const hasWalletFunds = walletBalance >= jobBudget;
+      
+      res.json({
+        success: true,
+        data: {
+          jobBudget,
+          walletBalance: Number(walletBalance),
+          hasWalletFunds,
+          shortfall: hasWalletFunds ? 0 : jobBudget - Number(walletBalance),
+          paymentOptions: [
+            {
+              method: 'wallet',
+              label: 'Pay from Wallet',
+              available: hasWalletFunds,
+              balance: Number(walletBalance)
+            },
+            {
+              method: 'paystack',
+              label: 'Pay with Card/Bank',
+              available: true
+            },
+            {
+              method: 'milestone',
+              label: 'Award without upfront payment',
+              available: true,
+              description: 'Pay later through milestones'
+            }
+          ]
+        }
+      });
     } catch (error) {
       next(error);
     }
