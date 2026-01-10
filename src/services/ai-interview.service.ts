@@ -104,6 +104,8 @@ export class AIInterviewService {
     const questionsData = JSON.parse(jsonMatch[0])
     return this.formatQuestions(questionsData)
   }
+
+  private buildPrompt(config: InterviewConfig): string {
     const focusAreasText = config.focusAreas.length > 0 ? config.focusAreas.join(', ') : 'general skills'
     const customText = config.customPrompt ? `\nAdditional Requirements: ${config.customPrompt}` : ''
     
