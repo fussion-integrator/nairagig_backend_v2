@@ -9,15 +9,15 @@ const facebookAmbassadorController = new FacebookAmbassadorController();
 router.use(authenticate);
 
 // Get Facebook ambassador challenge data
-router.get('/challenge', facebookAmbassadorController.getAmbassadorChallenge);
+router.get('/challenge', (req, res) => facebookAmbassadorController.getAmbassadorChallenge(req, res));
 
 // Submit Facebook post
-router.post('/submit-post', facebookAmbassadorController.submitPost);
+router.post('/submit-post', (req, res) => facebookAmbassadorController.submitPost(req, res));
 
 // Request milestone review
-router.post('/request-review', facebookAmbassadorController.requestMilestoneReview);
+router.post('/request-review', (req, res) => facebookAmbassadorController.requestMilestoneReview(req, res));
 
 // Claim approved earnings
-router.post('/claim-earnings', facebookAmbassadorController.claimApprovedEarnings);
+router.post('/claim-earnings', (req, res) => facebookAmbassadorController.claimApprovedEarnings(req, res));
 
 export default router;

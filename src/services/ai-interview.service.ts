@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 interface InterviewConfig {
   jobTitle: string
@@ -24,65 +25,85 @@ interface GeneratedQuestion {
 
 export class AIInterviewService {
   private openai: OpenAI
+  private gemini: GoogleGenerativeAI
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     })
+    this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
   }
 
   async generateQuestions(config: InterviewConfig): Promise<GeneratedQuestion[]> {
-    const prompt = this.buildPrompt(config)
-    
+    // Try free options first
     try {
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert interview coach and HR professional. Generate realistic, relevant interview questions based on the provided job details. Always return valid JSON array with exactly the requested number of questions.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000 // Increased for more questions
-      })
-
-      const content = response.choices[0].message.content
-      if (!content) {
-        throw new Error('No content received from OpenAI')
-      }
-
-      // Clean the response to ensure it's valid JSON
-      const cleanContent = content.replace(/```json\n?|```\n?/g, '').trim()
-      const questionsData = JSON.parse(cleanContent)
-      
-      if (!Array.isArray(questionsData)) {
-        throw new Error('Response is not an array')
-      }
-
-      const formattedQuestions = this.formatQuestions(questionsData)
-      
-      // Ensure we have the exact number requested
-      const requestedCount = parseInt(config.questionCount)
-      if (formattedQuestions.length < requestedCount) {
-        // If AI didn't generate enough, supplement with fallback
-        const fallbackQuestions = this.getFallbackQuestions(config)
-        const combined = [...formattedQuestions, ...fallbackQuestions]
-        return combined.slice(0, requestedCount)
-      }
-      
-      return formattedQuestions.slice(0, requestedCount)
+      console.log('Attempting Gemini API...')
+      return await this.generateWithGemini(config)
     } catch (error) {
-      console.error('AI question generation failed:', error)
-      return this.getFallbackQuestions(config)
+      console.log('Gemini failed, trying Hugging Face...', error)
+      
+      try {
+        return await this.generateWithHuggingFace(config)
+      } catch (error) {
+        console.log('Hugging Face failed, using fallback...', error)
+        return this.getFallbackQuestions(config)
+      }
     }
   }
 
-  private buildPrompt(config: InterviewConfig): string {
+  private async generateWithGemini(config: InterviewConfig): Promise<GeneratedQuestion[]> {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('Gemini API key not configured')
+    }
+
+    const model = this.gemini.getGenerativeModel({ model: 'gemini-pro' })
+    const prompt = this.buildPrompt(config)
+    
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const text = response.text()
+    
+    const cleanContent = text.replace(/```json\n?|```\n?/g, '').trim()
+    const questionsData = JSON.parse(cleanContent)
+    
+    if (!Array.isArray(questionsData)) {
+      throw new Error('Response is not an array')
+    }
+
+    return this.formatQuestions(questionsData)
+  }
+
+  private async generateWithHuggingFace(config: InterviewConfig): Promise<GeneratedQuestion[]> {
+    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inputs: this.buildPrompt(config),
+        parameters: {
+          max_new_tokens: 2000,
+          temperature: 0.7
+        }
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Hugging Face API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const text = data[0]?.generated_text || ''
+    
+    const jsonMatch = text.match(/\[.*\]/s)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in response')
+    }
+
+    const questionsData = JSON.parse(jsonMatch[0])
+    return this.formatQuestions(questionsData)
+  }
     const focusAreasText = config.focusAreas.length > 0 ? config.focusAreas.join(', ') : 'general skills'
     const customText = config.customPrompt ? `\nAdditional Requirements: ${config.customPrompt}` : ''
     

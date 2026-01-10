@@ -21,6 +21,7 @@
     "setup:admin": "ts-node scripts/setup-admin.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.7.1",
     "@types/bcrypt": "^6.0.0",
     "@types/cheerio": "^0.22.35",

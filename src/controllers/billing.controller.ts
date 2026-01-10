@@ -373,6 +373,8 @@ export class BillingController {
       }
 
       console.log('Verifying account:', { accountNumber, bankCode });
+      console.log('Using Paystack key:', process.env.PAYSTACK_SECRET_KEY?.substring(0, 20) + '...');
+      console.log('Key type:', process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_live_') ? 'LIVE' : 'TEST');
 
       const url = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`;
       const response = await fetch(url, {

@@ -12,7 +12,18 @@ export class ProjectController {
       const skip = (Number(page) - 1) * Number(limit);
 
       const where: any = {};
-      if (status) where.status = status;
+      if (status) {
+        // Convert string status to proper enum value
+        const statusMap: { [key: string]: string } = {
+          'active': 'ACTIVE',
+          'planning': 'PLANNING',
+          'on_hold': 'ON_HOLD',
+          'completed': 'COMPLETED',
+          'cancelled': 'CANCELLED',
+          'disputed': 'DISPUTED'
+        };
+        where.status = statusMap[status.toLowerCase()] || status.toUpperCase();
+      }
       if (category) where.category = category;
       if (minBudget || maxBudget) {
         where.budget = {};
@@ -164,7 +175,7 @@ export class ProjectController {
           agreedBudget: budget,
           clientId: userId,
           freelancerId: req.body.freelancerId,
-          status: 'ACTIVE' as any,
+          status: 'ACTIVE',
         },
         include: {
           client: {

@@ -187,6 +187,14 @@ model User {
   facebookMilestones        FacebookMilestone[]
   twitterPosts              TwitterPost[]
   twitterMilestones         TwitterMilestone[]
+  contentCreatorPosts       ContentCreatorPost[]
+  communityPosts            CommunityPost[]       @relation("CommunityPosts")
+  tipRecipients             CommunityPost[]       @relation("TipRecipient")
+  postResponses             PostResponse[]        @relation("PostResponses")
+  postLikes                 PostLike[]            @relation("PostLikes")
+  responseLikes             ResponseLike[]        @relation("ResponseLikes")
+  postBookmarks             PostBookmark[]        @relation("PostBookmarks")
+  postMentions              PostMention[]         @relation("PostMentions")
 
   @@map("users")
 }
@@ -909,6 +917,8 @@ model File {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   uploader        User?          @relation("UploadedFiles", fields: [uploadedBy], references: [id])
+  videoContent    ContentCreatorPost[] @relation("VideoFile")
+  thumbnailContent ContentCreatorPost[] @relation("ThumbnailFile")
 
   @@map("files")
 }
@@ -2193,6 +2203,70 @@ enum TwitterMilestoneStatus {
   REJECTED
 }
 
+enum ContentStatus {
+  PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum ContentType {
+  TUTORIAL
+  TIPS
+  SHOWCASE
+  STORY
+  OTHER
+}
+
+model ContentCreatorPost {
+  id                String        @id @default(cuid())
+  userId            String
+  title             String
+  description       String
+  videoFileId       String?       // Reference to uploaded video file
+  thumbnailFileId   String?       // Reference to uploaded thumbnail file
+  contentType       ContentType
+  status            ContentStatus @default(PENDING)
+  publishedUrls     Json?         // URLs where content is published by admin
+  views             Int           @default(0)
+  reactions         Int           @default(0)
+  comments          Int           @default(0)
+  totalEarnings     Float         @default(0)
+  contentRights     Boolean       @default(false) // User agreed to content rights
+  adminNotes        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoFile         File?         @relation("VideoFile", fields: [videoFileId], references: [id])
+  thumbnailFile     File?         @relation("ThumbnailFile", fields: [thumbnailFileId], references: [id])
+  milestones        ContentMilestone[]
+  
+  @@map("content_creator_posts")
+}
+
+model ContentMilestone {
+  id                String              @id @default(cuid())
+  postId            String
+  milestoneType     ContentMilestoneType
+  targetValue       Int
+  currentValue      Int                 @default(0)
+  isCompleted       Boolean             @default(false)
+  rewardAmount      Float
+  completedAt       DateTime?
+  createdAt         DateTime            @default(now())
+  
+  post              ContentCreatorPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@map("content_milestones")
+}
+
+enum ContentMilestoneType {
+  VIEWS_100
+  REACTIONS_MILESTONE
+  COMMENTS_MILESTONE
+}
+
 // Admin System Models
 model Admin {
   id                String              @id @default(uuid())
@@ -2369,4 +2443,134 @@ enum Permission {
   MANAGE_ADMINS
   VIEW_AUDIT_LOGS
   SYSTEM_MAINTENANCE
+}
+
+// NairaPlug Community Models
+model CommunityPost {
+  id         String      @id @default(uuid())
+  title      String
+  content    String
+  category   PostCategory
+  location   String?
+  isUrgent   Boolean     @default(false)
+  tipAmount  Int?
+  authorId   String
+  views      Int         @default(0)
+  tipReleased Boolean    @default(false)
+  tipReleasedAt DateTime?
+  tipReleasedToId String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  
+  author     User        @relation("CommunityPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  tipReleasedTo User?     @relation("TipRecipient", fields: [tipReleasedToId], references: [id])
+  tags       PostTag[]   @relation("PostToPostTag")
+  responses  PostResponse[]
+  likes      PostLike[]
+  bookmarks  PostBookmark[]
+  mentions   PostMention[]
+  media      PostMedia[]
+  
+  @@map("community_posts")
+}
+
+model PostTag {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  createdAt DateTime      @default(now())
+  posts     CommunityPost[] @relation("PostToPostTag")
+  
+  @@map("post_tags")
+}
+
+model PostResponse {
+  id          String      @id @default(uuid())
+  content     String
+  postId      String
+  authorId    String?
+  isAnonymous Boolean     @default(false)
+  isHelpful   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author      User?       @relation("PostResponses", fields: [authorId], references: [id], onDelete: SetNull)
+  likes       ResponseLike[]
+  
+  @@map("post_responses")
+}
+
+model PostLike {
+  id        String        @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime      @default(now())
+  
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+model ResponseLike {
+  id         String       @id @default(uuid())
+  responseId String
+  userId     String
+  createdAt  DateTime     @default(now())
+  
+  response   PostResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  user       User         @relation("ResponseLikes", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([responseId, userId])
+  @@map("response_likes")
+}
+
+model PostBookmark {
+  id        String        @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime      @default(now())
+  
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation("PostBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@map("post_bookmarks")
+}
+
+model PostMention {
+  id        String        @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime      @default(now())
+  
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation("PostMentions", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@map("post_mentions")
+}
+
+model PostMedia {
+  id        String        @id @default(uuid())
+  postId    String
+  url       String
+  type      String
+  filename  String
+  createdAt DateTime      @default(now())
+  
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@map("post_media")
+}
+
+enum PostCategory {
+  JOBS
+  HOUSING
+  MARKETPLACE
+  SERVICES
+  TRANSPORT
+  SOCIAL
+  OTHERS
 }

@@ -138,7 +138,7 @@ export class TwitterAmbassadorController {
         newMilestones.push({
           userId,
           type: 'REACTIONS',
-          amount: 2000,
+          amount: 500, // 5 naira per reaction * 100 reactions
           status: 'PENDING',
           metadata: { milestone: i + 1, reactions: (i + 1) * 100 }
         });
@@ -148,7 +148,7 @@ export class TwitterAmbassadorController {
         newMilestones.push({
           userId,
           type: 'COMMENTS',
-          amount: 4000,
+          amount: 1000, // 10 naira per comment * 100 comments
           status: 'PENDING',
           metadata: { milestone: i + 1, comments: (i + 1) * 100 }
         });

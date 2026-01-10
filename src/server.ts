@@ -65,6 +65,9 @@ import referralRoutes from '@/routes/referral.routes';
 import linkedInAmbassadorRoutes from '@/routes/linkedin-ambassador.routes';
 import facebookAmbassadorRoutes from '@/routes/facebook-ambassador.routes';
 import twitterAmbassadorRoutes from '@/routes/twitter-ambassador.routes';
+import contentCreatorRoutes from '@/routes/content-creator.routes';
+import phoneVerificationRoutes from '@/routes/phone-verification.routes';
+import nairaPlugRoutes from '@/routes/nairaplug.routes';
 
 const app = express();
 const server = createServer(app);
@@ -240,6 +243,9 @@ app.use(`${apiPrefix}/referrals`, referralRoutes);
 app.use(`${apiPrefix}/linkedin-ambassador`, linkedInAmbassadorRoutes);
 app.use(`${apiPrefix}/facebook-ambassador`, facebookAmbassadorRoutes);
 app.use(`${apiPrefix}/twitter-ambassador`, twitterAmbassadorRoutes);
+app.use(`${apiPrefix}/content-creator`, contentCreatorRoutes);
+app.use(`${apiPrefix}/phone-verification`, phoneVerificationRoutes);
+app.use(`${apiPrefix}/nairaplug`, nairaPlugRoutes);
 app.use(`${apiPrefix}/notifications/bulk`, notificationBulkRoutes);
 
 // Error handling middleware
