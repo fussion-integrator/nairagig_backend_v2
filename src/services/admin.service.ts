@@ -1,5 +1,4 @@
 import { prisma } from '@/config/database';
-import { logger } from '@/utils/logger';
 import crypto from 'crypto';
 
 export class AdminService {
@@ -37,7 +36,7 @@ export class AdminService {
       });
 
       if (!session) {
-        logger.debug('Session validation failed - not found or expired:', {
+        console.log('Session validation failed - not found or expired:', {
           tokenPrefix: token.substring(0, 10)
         });
         return null;
@@ -45,7 +44,7 @@ export class AdminService {
 
       // Check if admin is still active
       if (session.admin.status !== 'ACTIVE') {
-        logger.warn('Session validation failed - admin inactive:', {
+        console.log('Session validation failed - admin inactive:', {
           adminEmail: session.admin.email,
           status: session.admin.status
         });
@@ -55,29 +54,14 @@ export class AdminService {
         return null;
       }
 
-      // Check session age (optional security measure)
-      const sessionAge = Date.now() - session.createdAt.getTime();
-      const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours
-      
-      if (sessionAge > maxSessionAge) {
-        logger.info('Session expired due to age:', {
-          adminEmail: session.admin.email,
-          sessionAge: Math.round(sessionAge / (60 * 60 * 1000)) + ' hours'
-        });
-        
-        await this.deactivateSession(session.id);
-        return null;
-      }
-
-      logger.debug('Session validated successfully:', {
+      console.log('Session validated successfully:', {
         adminEmail: session.admin.email,
-        sessionId: session.id,
-        lastActive: session.lastActiveAt
+        sessionId: session.id
       });
 
       return session;
     } catch (error) {
-      logger.error('Session validation error:', error);
+      console.error('Session validation error:', error);
       return null;
     }
   }
@@ -90,7 +74,7 @@ export class AdminService {
         data: { lastActiveAt: new Date() }
       });
     } catch (error) {
-      logger.error('Failed to update session activity:', error);
+      console.error('Failed to update session activity:', error);
     }
   }
 
@@ -102,9 +86,9 @@ export class AdminService {
         data: { isActive: false }
       });
       
-      logger.info('Session deactivated:', { sessionId });
+      console.log('Session deactivated:', { sessionId });
     } catch (error) {
-      logger.error('Failed to deactivate session:', error);
+      console.error('Failed to deactivate session:', error);
     }
   }
 
@@ -154,7 +138,7 @@ export class AdminService {
 
       return jobPermissions.includes(permission);
     } catch (error) {
-      logger.error('Permission check error:', error);
+      console.error('Permission check error:', error);
       return false;
     }
   }
@@ -194,7 +178,7 @@ export class AdminService {
         }
       });
 
-      logger.info('Admin session created:', {
+      console.log('Admin session created:', {
         adminId,
         sessionId: session.id,
         ipAddress,
@@ -203,7 +187,7 @@ export class AdminService {
 
       return session;
     } catch (error) {
-      logger.error('Failed to create admin session:', error);
+      console.error('Failed to create admin session:', error);
       
       // Log failed session creation
       try {
@@ -217,7 +201,7 @@ export class AdminService {
           }
         });
       } catch (logError) {
-        logger.error('Failed to log failed session creation:', logError);
+        console.error('Failed to log failed session creation:', logError);
       }
       
       throw error;
@@ -237,12 +221,12 @@ export class AdminService {
       });
 
       if (result.count > 0) {
-        logger.info(`Cleaned up ${result.count} expired admin sessions`);
+        console.log(`Cleaned up ${result.count} expired admin sessions`);
       }
 
       return result.count;
     } catch (error) {
-      logger.error('Failed to cleanup expired sessions:', error);
+      console.error('Failed to cleanup expired sessions:', error);
       return 0;
     }
   }
@@ -268,7 +252,7 @@ export class AdminService {
         orderBy: { lastActiveAt: 'desc' }
       });
     } catch (error) {
-      logger.error('Failed to get active sessions:', error);
+      console.error('Failed to get active sessions:', error);
       return [];
     }
   }
@@ -286,10 +270,10 @@ export class AdminService {
         data: { isActive: false }
       });
 
-      logger.info(`Revoked ${result.count} sessions for admin:`, { adminId });
+      console.log(`Revoked ${result.count} sessions for admin:`, { adminId });
       return result.count;
     } catch (error) {
-      logger.error('Failed to revoke sessions:', error);
+      console.error('Failed to revoke sessions:', error);
       return 0;
     }
   }

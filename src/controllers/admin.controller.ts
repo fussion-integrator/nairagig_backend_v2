@@ -1,161 +1,109 @@
 import { Request, Response } from 'express';
 import { AdminService } from '../services/admin.service';
-import { AdminRole, PrismaClient } from '@prisma/client';
+import { PrismaClient, AdminRoleType } from '@prisma/client';
 
 const adminService = new AdminService();
 const prisma = new PrismaClient();
 
 export class AdminController {
-  // Verify authentication (for httpOnly cookies)
-  async verifyAuth(req: Request, res: Response) {
+  // Google OAuth callback for admin authentication
+  async googleCallback(req: Request, res: Response) {
     try {
-      const accessToken = req.cookies.admin_access_token;
-      const refreshToken = req.cookies.admin_refresh_token;
-      
-      console.log('Admin verify auth:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        cookies: Object.keys(req.cookies),
-        accessToken: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
-        refreshToken: refreshToken ? refreshToken.substring(0, 20) + '...' : 'none'
+      const user = req.user as any;
+      if (!user) {
+        return res.redirect('http://localhost:3001/login?error=oauth_failed');
+      }
+
+      console.log('OAuth user data:', user);
+
+      // Check if user is admin in the admin table
+      let admin = await prisma.admin.findUnique({
+        where: { email: user.email }
       });
-      
-      const token = accessToken || refreshToken;
-      
-      if (!token) {
-        return res.status(401).json({ success: false, error: 'No token provided' });
+
+      console.log('Existing admin found:', admin);
+
+      // Auto-create super admin for designated email
+      if (!admin && user.email === 'fussion.integration@gmail.com') {
+        console.log('Creating new super admin for:', user.email);
+        
+        admin = await prisma.admin.create({
+          data: {
+            email: user.email,
+            firstName: user.firstName || user.given_name || 'Super',
+            lastName: user.lastName || user.family_name || 'Admin',
+            role: 'SUPER_ADMIN',
+            status: 'ACTIVE',
+            activatedAt: new Date()
+          }
+        });
+
+        console.log('Admin created successfully:', admin);
       }
 
-      const session = await adminService.validateSession(token);
-      
-      if (!session) {
-        return res.status(401).json({ success: false, error: 'Invalid token' });
+      if (!admin || admin.status !== 'ACTIVE') {
+        console.log('Admin not found or inactive:', { admin: admin?.email, status: admin?.status });
+        return res.redirect('http://localhost:3001/login?error=unauthorized');
       }
 
-      res.json({
-        success: true,
-        admin: {
-          id: session.admin.id,
-          email: session.admin.email,
-          firstName: session.admin.firstName,
-          lastName: session.admin.lastName,
-          role: session.admin.role,
-          status: session.admin.status,
-          lastLoginAt: session.admin.lastLoginAt,
-          createdAt: session.admin.createdAt
+      // Create admin session
+      const token = adminService.generateSessionToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Clean up existing sessions
+      await prisma.adminSession.updateMany({
+        where: { adminId: admin.id },
+        data: { isActive: false }
+      });
+
+      // Create new session
+      await prisma.adminSession.create({
+        data: {
+          adminId: admin.id,
+          token,
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.headers['user-agent'] || 'unknown',
+          expiresAt
         }
       });
-    } catch (error: any) {
-      console.error('Admin verify auth error:', error);
-      res.status(401).json({ success: false, error: error.message });
-    }
-  }
 
-  // OAuth login
-  async login(req: Request, res: Response) {
-    try {
-      const { token } = req.body;
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const userAgent = req.get('User-Agent');
-
-      if (!token) {
-        return res.status(400).json({ error: 'Google token required' });
-      }
-
-      const result = await adminService.loginWithGoogle(token, ipAddress, userAgent);
-
-      // Set both access and refresh tokens as httpOnly cookies
-      res.cookie('admin_access_token', result.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        expires: result.expiresAt
+      // Update last login
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: { lastLoginAt: new Date() }
       });
+
+      console.log('Admin OAuth login successful:', admin.email);
+
+      // Redirect to admin callback with tokens
+      const adminData = encodeURIComponent(JSON.stringify({
+        id: admin.id,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        role: admin.role
+      }));
       
-      res.cookie('admin_refresh_token', result.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        expires: result.expiresAt
-      });
-
-      res.json({
-        success: true,
-        admin: result.admin,
-        expiresAt: result.expiresAt
-      });
-    } catch (error: any) {
-      res.status(401).json({ error: error.message });
+      const redirectUrl = `http://localhost:3001/auth/callback?accessToken=${token}&refreshToken=${token}&admin=${adminData}`;
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Admin OAuth callback error:', error);
+      res.redirect('http://localhost:3001/login?error=oauth_failed');
     }
   }
 
-  // Logout
-  async logout(req: Request, res: Response) {
-    try {
-      const accessToken = req.cookies.admin_access_token;
-      const refreshToken = req.cookies.admin_refresh_token;
-      const token = accessToken || refreshToken;
-      
-      if (token) {
-        await adminService.logout(token);
-      }
-
-      res.clearCookie('admin_access_token');
-      res.clearCookie('admin_refresh_token');
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Get dashboard stats
-  async getDashboardStats(req: Request, res: Response) {
-    try {
-      // Get basic stats from database
-      const [userCount, jobCount, challengeCount, categoryCount] = await Promise.all([
-        prisma.user.count({ where: { status: 'ACTIVE' } }),
-        prisma.job.count({ where: { status: 'OPEN' } }),
-        prisma.challenge.count({ where: { status: 'ACTIVE' } }),
-        prisma.category.count()
-      ]);
-
-      const stats = {
-        totalUsers: userCount,
-        activeGigs: jobCount,
-        activeChallenges: challengeCount,
-        totalCategories: categoryCount,
-        totalRevenue: 125000, // Mock data
-        openDisputes: 3, // Mock data
-        openJobs: jobCount
-      };
-
-      const recentActivity = [
-        { action: 'User registered', metadata: { user: 'Recent User' }, timestamp: new Date().toISOString() },
-        { action: 'Job posted', metadata: { title: 'New Job' }, timestamp: new Date().toISOString() },
-        { action: 'Challenge created', metadata: { title: 'New Challenge' }, timestamp: new Date().toISOString() }
-      ];
-
-      res.json({
-        success: true,
-        data: { stats, recentActivity }
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Get current admin (supports both Bearer token and cookie auth)
+  // Get current admin info
   async me(req: Request, res: Response) {
     try {
       // Check for token in both Authorization header and cookies
       const authHeader = req.headers.authorization;
-      const accessToken = req.cookies.admin_access_token;
-      const refreshToken = req.cookies.admin_refresh_token;
+      const accessToken = req.cookies?.admin_access_token;
+      const refreshToken = req.cookies?.admin_refresh_token;
       
       let token: string | null = null;
       
       if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        token = authHeader.substring(7);
       } else if (accessToken) {
         token = accessToken;
       } else if (refreshToken) {
@@ -191,7 +139,7 @@ export class AdminController {
   }
 
   // Refresh admin tokens
-  async refreshTokens(req: Request, res: Response) {
+  async refresh(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -205,7 +153,6 @@ export class AdminController {
         return res.status(401).json({ error: 'Invalid refresh token' });
       }
 
-      // For simplicity, we'll use the same token (in production, generate new tokens)
       res.json({
         success: true,
         admin: {
@@ -229,313 +176,205 @@ export class AdminController {
     }
   }
 
-  // Invite admin (Super Admin only)
+  // Get dashboard stats
+  async getStats(req: Request, res: Response) {
+    try {
+      const [userCount, jobCount, challengeCount] = await Promise.all([
+        prisma.user.count({ where: { status: 'ACTIVE' } }),
+        prisma.job.count({ where: { status: 'OPEN' } }),
+        prisma.challenge.count({ where: { status: 'ACTIVE' } })
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          totalUsers: userCount,
+          activeGigs: jobCount,
+          activeChallenges: challengeCount,
+          totalRevenue: 125000,
+          openDisputes: 3
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Get system health
+  async getSystemHealth(req: Request, res: Response) {
+    try {
+      res.json({
+        success: true,
+        data: {
+          status: 'healthy',
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Placeholder methods for admin management (implement as needed)
   async inviteAdmin(req: Request, res: Response) {
-    try {
-      const { email, role } = req.body;
-      const invitedBy = (req as any).admin.id;
-
-      if (!email || !role) {
-        return res.status(400).json({ error: 'Email and role required' });
-      }
-
-      if (!Object.values(AdminRole).includes(role)) {
-        return res.status(400).json({ error: 'Invalid role' });
-      }
-
-      const invitation = await adminService.inviteAdmin(email, role, invitedBy);
-
-      res.json({
-        success: true,
-        invitation: {
-          id: invitation.id,
-          email: invitation.email,
-          role: invitation.role,
-          expiresAt: invitation.expiresAt
-        }
-      });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Validate invitation token
-  async validateInvitationToken(req: Request, res: Response) {
-    try {
-      const { token } = req.params;
-
-      if (!token) {
-        return res.status(400).json({ error: 'Token required' });
-      }
-
-      const invitation = await adminService.validateInvitationToken(token);
-
-      res.json({
-        success: true,
-        invitation: {
-          email: invitation.email,
-          role: invitation.role,
-          expiresAt: invitation.expiresAt
-        }
-      });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  // Accept invitation
-  async acceptInvitation(req: Request, res: Response) {
-    try {
-      const { token, firstName, lastName } = req.body;
-
-      if (!token || !firstName || !lastName) {
-        return res.status(400).json({ error: 'Token, firstName, and lastName required' });
-      }
-
-      const admin = await adminService.acceptInvitation(token, firstName, lastName);
-
-      res.json({
-        success: true,
-        message: 'Invitation accepted successfully',
-        admin: {
-          id: admin.id,
-          email: admin.email,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          role: admin.role
-        }
-      });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  // Get all admins (Super Admin only)
   async getAdmins(req: Request, res: Response) {
     try {
-      const { page, limit, search, status } = req.query;
+      // First, let's check if any admins exist at all
+      const allAdmins = await prisma.admin.findMany();
+      console.log('🔍 All admins in database:', allAdmins);
       
-      console.log('getAdmins called with params:', { page, limit, search, status });
+      const { page = 1, limit = 25, search, status } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
       
-      const result = await adminService.getAdmins({
-        page: page ? parseInt(page as string) : undefined,
-        limit: limit ? parseInt(limit as string) : undefined,
-        search: search as string,
-        status: status as string
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { firstName: { contains: search as string, mode: 'insensitive' } },
+          { lastName: { contains: search as string, mode: 'insensitive' } }
+        ];
+      }
+      if (status) where.status = status;
+      
+      console.log('🔍 Admin query where clause:', where);
+      
+      const [admins, total] = await Promise.all([
+        prisma.admin.findMany({
+          where,
+          skip,
+          take: Number(limit),
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            status: true,
+            createdAt: true,
+            lastLoginAt: true,
+            activatedAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.admin.count({ where })
+      ]);
+      
+      console.log('📊 Admin query results:', { adminsCount: admins.length, total });
+      
+      res.json({
+        success: true,
+        data: admins,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit))
+        }
       });
-
-      console.log('getAdmins result:', JSON.stringify(result, null, 2));
-      res.json(result);
     } catch (error: any) {
-      console.error('getAdmins error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Admin query error:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  // Get pending invitations
   async getInvitations(req: Request, res: Response) {
     try {
-      const invitations = await adminService.getInvitations();
-      res.json({ invitations });
+      const invitations = await prisma.adminInvitation.findMany({
+        where: { status: { in: ['PENDING', 'EXPIRED'] } },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          expiresAt: true,
+          invitedBy: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      
+      res.json({ success: true, data: invitations });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      // Return empty array if table doesn't exist
+      res.json({ success: true, data: [] });
     }
   }
 
-  // Google OAuth callback
-  async googleCallback(req: Request, res: Response) {
-    try {
-      console.log('🔗 Google OAuth callback triggered');
-      console.log('👤 User from OAuth:', req.user);
-      
-      const user = req.user as any;
-      if (!user) {
-        console.log('❌ No user from OAuth, redirecting to login');
-        return res.redirect('http://localhost:3001/login?error=oauth_failed');
-      }
-
-      console.log('Admin OAuth login:', user.email);
-
-      // Check if this user is an admin
-      let admin = await prisma.admin.findUnique({
-        where: { email: user.email },
-        include: { permissions: true }
-      });
-
-      // Auto-create super admin if it's the designated email
-      if (!admin && user.email === 'fussion.integration@gmail.com') {
-        console.log('🔄 Creating super admin for:', user.email);
-        admin = await prisma.admin.create({
-          data: {
-            email: user.email,
-            firstName: user.firstName || 'Super',
-            lastName: user.lastName || 'Admin',
-            role: 'SUPER_ADMIN',
-            status: 'ACTIVE',
-            activatedAt: new Date()
-          },
-          include: { permissions: true }
-        });
-      }
-
-      if (!admin || admin.status !== 'ACTIVE') {
-        console.log('❌ Admin not found or inactive:', { found: !!admin, status: admin?.status });
-        return res.redirect('http://localhost:3001/login?error=unauthorized');
-      }
-
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const userAgent = req.get('User-Agent');
-
-      // Create admin session
-      const sessionToken = adminService.generateSessionToken();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      await prisma.adminSession.create({
-        data: {
-          adminId: admin.id,
-          token: sessionToken,
-          ipAddress,
-          userAgent,
-          expiresAt
-        }
-      });
-
-      // Update last login
-      await prisma.admin.update({
-        where: { id: admin.id },
-        data: { lastLoginAt: new Date() }
-      });
-
-      // Log login
-      await prisma.adminLoginHistory.create({
-        data: {
-          adminId: admin.id,
-          ipAddress,
-          userAgent,
-          status: 'SUCCESS'
-        }
-      });
-
-      // Don't set cookies on backend domain - let frontend handle it
-      // Redirect to frontend callback with tokens
-      const adminData = encodeURIComponent(JSON.stringify({
-        id: admin.id,
-        email: admin.email,
-        firstName: admin.firstName,
-        lastName: admin.lastName,
-        role: admin.role
-      }));
-      
-      const tokens = encodeURIComponent(JSON.stringify({
-        accessToken: sessionToken,
-        refreshToken: sessionToken // Using same token for simplicity
-      }));
-
-      const redirectUrl = `http://localhost:3001/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
-      console.log('🚀 Redirecting to:', redirectUrl.substring(0, 100) + '...');
-      
-      res.redirect(redirectUrl);
-    } catch (error: any) {
-      console.error('Google OAuth callback error:', error);
-      res.redirect('http://localhost:3001/login?error=oauth_failed');
-    }
-  }
-
-  // Update admin permissions
   async updatePermissions(req: Request, res: Response) {
-    try {
-      const { adminId } = req.params;
-      const { permissions } = req.body;
-      const updatedBy = (req as any).admin.id;
-
-      const updatedAdmin = await adminService.updateAdminPermissions(adminId, permissions, updatedBy);
-      res.json({ success: true, admin: updatedAdmin });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Suspend admin
   async suspendAdmin(req: Request, res: Response) {
-    try {
-      const { adminId } = req.params;
-      const { reason } = req.body;
-      const suspendedBy = (req as any).admin.id;
-
-      const admin = await adminService.suspendAdmin(adminId, reason, suspendedBy);
-      res.json({ success: true, admin });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Activate admin
   async activateAdmin(req: Request, res: Response) {
-    try {
-      const { adminId } = req.params;
-      const activatedBy = (req as any).admin.id;
-
-      const admin = await adminService.activateAdmin(adminId, activatedBy);
-      res.json({ success: true, admin });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Revoke invitation
   async revokeInvitation(req: Request, res: Response) {
-    try {
-      const { invitationId } = req.params;
-      const revokedBy = (req as any).admin.id;
-
-      const invitation = await adminService.revokeInvitation(invitationId, revokedBy);
-      res.json({ success: true, invitation });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Export admins
   async exportAdmins(req: Request, res: Response) {
-    try {
-      const { format = 'csv', filters } = req.query;
-      const parsedFilters = filters ? JSON.parse(filters as string) : {};
-      
-      const data = await adminService.exportAdmins(parsedFilters, format as string);
-      
-      if (format === 'csv') {
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename=admins.csv');
-      } else {
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', 'attachment; filename=admins.json');
-      }
-      
-      res.send(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 
-  // Get admin stats
   async getAdminStats(req: Request, res: Response) {
     try {
-      const stats = await adminService.getAdminStats();
-      res.json({ success: true, stats });
+      console.log('🔍 Starting admin stats query...');
+      
+      // Check all tables individually
+      const allAdmins = await prisma.admin.findMany();
+      console.log('📊 All admins found:', allAdmins.length, allAdmins);
+      
+      const [totalAdmins, activeAdmins, pendingInvitations, recentLogins] = await Promise.allSettled([
+        prisma.admin.count(),
+        prisma.admin.count({ where: { status: 'ACTIVE' } }),
+        prisma.adminInvitation.count({ where: { status: 'PENDING' } }),
+        prisma.adminLoginHistory.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+            }
+          }
+        })
+      ]);
+      
+      console.log('📈 Stats results:', {
+        totalAdmins: totalAdmins.status === 'fulfilled' ? totalAdmins.value : totalAdmins.reason,
+        activeAdmins: activeAdmins.status === 'fulfilled' ? activeAdmins.value : activeAdmins.reason,
+        pendingInvitations: pendingInvitations.status === 'fulfilled' ? pendingInvitations.value : pendingInvitations.reason,
+        recentLogins: recentLogins.status === 'fulfilled' ? recentLogins.value : recentLogins.reason
+      });
+      
+      res.json({
+        success: true,
+        data: {
+          totalAdmins: totalAdmins.status === 'fulfilled' ? totalAdmins.value : 0,
+          activeAdmins: activeAdmins.status === 'fulfilled' ? activeAdmins.value : 0,
+          pendingInvitations: pendingInvitations.status === 'fulfilled' ? pendingInvitations.value : 0,
+          recentLogins: recentLogins.status === 'fulfilled' ? recentLogins.value : 0
+        }
+      });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('❌ Admin stats error:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  // Send invitation email
   async sendInvitationEmail(req: Request, res: Response) {
-    try {
-      const { email, role, invitedBy } = req.body;
-      
-      await adminService.sendInvitationEmail(email, role, invitedBy);
-      res.json({ success: true, message: 'Invitation email sent successfully' });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    res.status(501).json({ error: 'Not implemented yet' });
   }
 }

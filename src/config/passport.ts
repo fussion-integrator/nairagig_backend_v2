@@ -60,17 +60,18 @@ passport.use('google', new GoogleStrategy({
 passport.use('google-admin', new GoogleStrategy({
   clientID: config.googleClientId!,
   clientSecret: config.googleClientSecret!,
-  callbackURL: '/api/v1/auth/google/callback'
+  callbackURL: '/api/v1/admin/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    // For admin OAuth, we just return the profile data
-    // The actual admin lookup is handled in the controller
+    // For admin OAuth, we return the Google profile data
+    // The actual admin lookup and session creation happens in the controller
     const adminProfile = {
       googleId: profile.id,
       email: profile.emails?.[0]?.value || '',
       firstName: profile.name?.givenName || '',
       lastName: profile.name?.familyName || '',
-      profileImageUrl: profile.photos?.[0]?.value || null
+      profileImageUrl: profile.photos?.[0]?.value || null,
+      authProvider: 'GOOGLE'
     };
 
     return done(null, adminProfile);
@@ -196,23 +197,36 @@ passport.use(new AppleStrategy({
 }));
 
 passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+  // Check if this is an admin user (from google-admin strategy)
+  if (user.authProvider === 'GOOGLE' && !user.id) {
+    // This is an admin profile from OAuth, serialize the email
+    done(null, { type: 'admin', email: user.email });
+  } else {
+    // Regular user
+    done(null, { type: 'user', id: user.id });
+  }
 });
 
-passport.deserializeUser(async (id: string, done) => {
+passport.deserializeUser(async (data: any, done) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        profileImageUrl: true
-      }
-    });
-    done(null, user);
+    if (data.type === 'admin') {
+      // For admin, we don't need to deserialize since we handle it in the controller
+      done(null, { email: data.email, type: 'admin' });
+    } else {
+      // Regular user deserialization
+      const user = await prisma.user.findUnique({
+        where: { id: data.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          profileImageUrl: true
+        }
+      });
+      done(null, user);
+    }
   } catch (error) {
     done(error, null);
   }

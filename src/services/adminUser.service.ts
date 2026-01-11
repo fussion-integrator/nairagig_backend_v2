@@ -1,11 +1,108 @@
-import { PrismaClient, UserStatus, UserRole, Permission } from '@prisma/client';
+import { PrismaClient, UserStatus, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { emailService } from '@/services/email.service';
+import { createSuccessResponse, createErrorResponse, handleControllerError } from '../types/api.types';
+import { emailService } from './email.service';
+import { pushNotificationService } from './pushNotification.service';
 
 const prisma = new PrismaClient();
 
 export class AdminUserService {
+  // Get user statistics
+  async getUserStats() {
+    const [totalUsers, activeUsers, verifiedUsers, adminUsers, suspendedUsers, deletedUsers] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
+      prisma.user.count({ where: { isVerified: true, status: { not: UserStatus.DELETED } } }),
+      prisma.user.count({ where: { role: UserRole.ADMIN, status: { not: UserStatus.DELETED } } }),
+      prisma.user.count({ where: { status: UserStatus.SUSPENDED } }),
+      prisma.user.count({ where: { status: UserStatus.DELETED } })
+    ]);
+
+    return {
+      totalUsers,
+      activeUsers,
+      verifiedUsers,
+      adminUsers,
+      suspendedUsers,
+      deletedUsers
+    };
+  }
+
+  // Get comprehensive user details in one call
+  async getUserDetails(userId: string) {
+    const [user, documents, jobs, challenges, wallet, transactions, paymentMethods, subscription, paymentHistory, activity, sponsorships] = await Promise.allSettled([
+      this.getUserById(userId),
+      this.getUserDocuments(userId, 1, 10),
+      this.getUserJobs(userId, 1, 10),
+      this.getUserChallenges(userId, 1, 10),
+      this.getUserWallet(userId),
+      this.getUserTransactions(userId, 1, 10),
+      this.getUserPaymentMethods(userId),
+      this.getUserSubscription(userId),
+      this.getUserPaymentHistory(userId, 1, 10),
+      this.getUserActivity(userId, { limit: 20 }),
+      this.getUserSponsorships(userId, 1, 10)
+    ]);
+
+    return {
+      user: user.status === 'fulfilled' ? user.value : null,
+      documents: documents.status === 'fulfilled' ? documents.value : { documents: [], pagination: {} },
+      jobs: jobs.status === 'fulfilled' ? jobs.value : { jobs: [], pagination: {} },
+      challenges: challenges.status === 'fulfilled' ? challenges.value : { challenges: [], pagination: {} },
+      wallet: wallet.status === 'fulfilled' ? wallet.value : { wallet: {} },
+      transactions: transactions.status === 'fulfilled' ? transactions.value : { transactions: [], pagination: {} },
+      paymentMethods: paymentMethods.status === 'fulfilled' ? paymentMethods.value : { paymentMethods: [] },
+      subscription: subscription.status === 'fulfilled' ? subscription.value : { subscription: null },
+      paymentHistory: paymentHistory.status === 'fulfilled' ? paymentHistory.value : { paymentHistory: [], pagination: {} },
+      activity: activity.status === 'fulfilled' ? activity.value : [],
+      sponsorships: sponsorships.status === 'fulfilled' ? sponsorships.value : { sponsorships: [], pagination: {} }
+    };
+  }
+
+  // Get user sponsorships
+  async getUserSponsorships(userId: string, page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    
+    const sponsorships = await prisma.sponsorship.findMany({
+      where: { userId },
+      include: {
+        campaign: {
+          select: {
+            title: true,
+            description: true,
+            budget: true,
+            startDate: true,
+            endDate: true,
+            status: true
+          }
+        },
+        sponsor: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
+      },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    const total = await prisma.sponsorship.count({ where: { userId } });
+    
+    return {
+      sponsorships,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  }
+
   // Get users with pagination and filters
   async getUsers(params: {
     page?: number;
@@ -273,13 +370,8 @@ export class AdminUserService {
 
     // Send deletion notification email before anonymizing data
     try {
-      await emailService.sendAccountDeletion(user.firstName, user.email, {
-        deletionDate: deletionDate.toLocaleDateString(),
-        referenceId,
-        retentionPeriod,
-        appealDeadline: appealDeadline.toLocaleDateString(),
-        permanentDeletionDate: permanentDeletionDate.toLocaleDateString()
-      });
+      // TODO: Implement email service
+      console.log(`Account deletion notification would be sent to ${user.email}`);
     } catch (emailError) {
       console.error('Failed to send deletion notification email:', emailError);
       // Continue with deletion even if email fails
@@ -498,12 +590,27 @@ export class AdminUserService {
     return user;
   }
 
-  // Reset user password - Note: This would need password field in User model
+  // Reset user password - Now with actual password field
   async resetUserPassword(userId: string, adminId: string) {
     const temporaryPassword = crypto.randomBytes(8).toString('hex');
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
     
-    // Since User model doesn't have password field, we'll just log the action
-    // In a real implementation, you'd need to add password field to User model
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    // Send password reset email
+    try {
+      await emailService.sendPasswordReset(user.firstName, user.email, {
+        temporaryPassword,
+        resetUrl: `${process.env.FRONTEND_URL}/reset-password`,
+        expiresIn: '24 hours'
+      });
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+    }
+    
     await this.logAdminAction(adminId, 'RESET_PASSWORD', 'User', userId, { temporaryPassword });
     return { temporaryPassword };
   }
@@ -923,59 +1030,137 @@ export class AdminUserService {
     sendEmail?: boolean;
     sendPushNotification?: boolean;
   }) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const admin = await prisma.admin.findUnique({ where: { id: adminId } });
-    if (!admin) {
-      throw new Error('Admin not found');
-    }
-
-    // Send email notification if requested
-    if (messageData.sendEmail) {
-      try {
-        await emailService.sendAdminMessage(user.firstName, user.email, {
-          subject: messageData.subject,
-          message: messageData.message,
-          adminName: `${admin.firstName} ${admin.lastName}`,
-          sentDate: new Date().toLocaleDateString(),
-          actionRequired: messageData.actionRequired
-        });
-      } catch (emailError) {
-        console.error('Failed to send admin message email:', emailError);
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new Error('User not found');
       }
+
+      const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+      if (!admin) {
+        throw new Error('Admin not found');
+      }
+
+      const adminName = `${admin.firstName || 'Admin'} ${admin.lastName || ''}`.trim();
+
+      // Send email notification if requested
+      if (messageData.sendEmail) {
+        try {
+          // Add timeout to email service call
+          const emailPromise = emailService.sendAdminMessage(user.firstName, user.email, {
+            subject: messageData.subject,
+            message: messageData.message,
+            adminName,
+            sentDate: new Date().toLocaleDateString(),
+            actionRequired: messageData.actionRequired
+          });
+          
+          // Set timeout for email sending (60 seconds to match email service)
+          await Promise.race([
+            emailPromise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Email service timeout')), 60000)
+            )
+          ]);
+        } catch (emailError) {
+          console.error('Failed to send admin message email:', emailError);
+          // Don't throw error, just log it and continue
+        }
+      }
+
+      // Send push notification if requested
+      if (messageData.sendPushNotification) {
+        try {
+          await pushNotificationService.sendNotification(userId, {
+            title: messageData.subject,
+            message: messageData.message,
+            actionUrl: `${process.env.FRONTEND_URL}/messages`
+          });
+        } catch (pushError) {
+          console.error('Failed to send push notification:', pushError);
+          // Don't throw error, just log it and continue
+        }
+      }
+
+      await this.logAdminAction(adminId, 'SEND_MESSAGE', 'User', userId, {
+        subject: messageData.subject,
+        message: messageData.message,
+        actionRequired: messageData.actionRequired,
+        sendEmail: messageData.sendEmail,
+        sendPushNotification: messageData.sendPushNotification,
+        adminName
+      });
+
+      return { success: true, message: 'Message sent successfully' };
+    } catch (error: any) {
+      console.error('Error in sendMessageToUser:', error);
+      throw error;
     }
-
-    // TODO: Implement push notification if requested
-    if (messageData.sendPushNotification) {
-      // Push notification logic would go here
-      console.log('Push notification would be sent here');
-    }
-
-    await this.logAdminAction(adminId, 'SEND_MESSAGE', 'User', userId, {
-      subject: messageData.subject,
-      message: messageData.message,
-      actionRequired: messageData.actionRequired,
-      sendEmail: messageData.sendEmail,
-      sendPushNotification: messageData.sendPushNotification,
-      adminName: `${admin.firstName} ${admin.lastName}`
-    });
-
-    return { success: true, message: 'Message sent successfully' };
   }
 
-  async getUserDocuments(userId: string, page: number = 1, limit: number = 10) {
-    // Since Document model doesn't exist, return empty for now
-    // In a real implementation, you'd need to add Document model to schema
+  async getUserProjects(userId: string, page: number = 1, limit: number = 10) {
+    const projects = await prisma.project.findMany({
+      where: {
+        OR: [
+          { clientId: userId },
+          { freelancerId: userId }
+        ]
+      },
+      include: {
+        client: { select: { firstName: true, lastName: true } },
+        freelancer: { select: { firstName: true, lastName: true } }
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    const total = await prisma.project.count({
+      where: {
+        OR: [
+          { clientId: userId },
+          { freelancerId: userId }
+        ]
+      }
+    });
+    
     return {
-      documents: [],
+      projects,
       pagination: {
         page,
         limit,
-        total: 0,
-        pages: 0
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async getUserDocuments(userId: string, page: number = 1, limit: number = 10) {
+    const documents = await prisma.document.findMany({
+      where: { userId },
+      include: {
+        reviewer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { uploadedAt: 'desc' }
+    });
+    
+    const total = await prisma.document.count({ where: { userId } });
+    
+    return {
+      documents,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     };
   }
@@ -1085,7 +1270,6 @@ export class AdminUserService {
     });
     
     return {
-      success: true,
       wallet: wallet || {
         availableBalance: 0,
         pendingBalance: 0,
@@ -1105,14 +1289,12 @@ export class AdminUserService {
       });
 
       return {
-        success: true,
         paymentMethods
       };
     } catch (error) {
       console.error('Error fetching user payment methods:', error);
       return {
-        success: false,
-        error: 'Failed to fetch payment methods'
+        paymentMethods: []
       };
     }
   }
@@ -1132,14 +1314,12 @@ export class AdminUserService {
       });
 
       return {
-        success: true,
         subscription
       };
     } catch (error) {
       console.error('Error fetching user subscription:', error);
       return {
-        success: false,
-        error: 'Failed to fetch subscription information'
+        subscription: null
       };
     }
   }
@@ -1166,7 +1346,6 @@ export class AdminUserService {
       });
 
       return {
-        success: true,
         paymentHistory,
         pagination: {
           page,
@@ -1178,9 +1357,96 @@ export class AdminUserService {
     } catch (error) {
       console.error('Error fetching user payment history:', error);
       return {
-        success: false,
-        error: 'Failed to fetch payment history'
+        paymentHistory: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0
+        }
       };
     }
+  }
+
+  // Send email to individual user
+  async sendEmailToUser(userId: string, adminId: string, emailData: {
+    subject: string;
+    message: string;
+  }) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+    if (!admin) {
+      throw new Error('Admin not found');
+    }
+
+    const adminName = `${admin.firstName || 'Admin'} ${admin.lastName || ''}`.trim();
+
+    try {
+      await emailService.sendAdminMessage(user.firstName, user.email, {
+        subject: emailData.subject,
+        message: emailData.message,
+        adminName,
+        sentDate: new Date().toLocaleDateString(),
+        actionRequired: false
+      });
+
+      await this.logAdminAction(adminId, 'SEND_EMAIL', 'User', userId, {
+        subject: emailData.subject,
+        message: emailData.message,
+        adminName
+      });
+
+      return { success: true, message: 'Email sent successfully' };
+    } catch (error: any) {
+      throw new Error(`Failed to send email: ${error.message}`);
+    }
+  }
+
+  // Send bulk email to multiple users
+  async sendBulkEmail(userIds: string[], adminId: string, emailData: {
+    subject: string;
+    message: string;
+  }) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, firstName: true, email: true }
+    });
+
+    const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+    if (!admin) {
+      throw new Error('Admin not found');
+    }
+
+    const adminName = `${admin.firstName || 'Admin'} ${admin.lastName || ''}`.trim();
+
+    const results = [];
+    for (const user of users) {
+      try {
+        await emailService.sendAdminMessage(user.firstName, user.email, {
+          subject: emailData.subject,
+          message: emailData.message,
+          adminName,
+          sentDate: new Date().toLocaleDateString(),
+          actionRequired: false
+        });
+        results.push({ userId: user.id, success: true });
+      } catch (error: any) {
+        results.push({ userId: user.id, success: false, error: error.message });
+      }
+    }
+
+    await this.logAdminAction(adminId, 'BULK_EMAIL', 'User', 'multiple', {
+      subject: emailData.subject,
+      message: emailData.message,
+      userIds,
+      results,
+      adminName
+    });
+
+    return results;
   }
 }

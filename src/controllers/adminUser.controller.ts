@@ -19,9 +19,19 @@ export class AdminUserController {
         includeDeleted: includeDeleted === 'true'
       });
 
-      res.json(result);
+      res.json({ success: true, ...result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Get user statistics
+  async getUserStats(req: Request, res: Response) {
+    try {
+      const stats = await adminUserService.getUserStats();
+      res.json({ success: true, data: stats });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -40,9 +50,20 @@ export class AdminUserController {
         password
       }, adminId);
 
-      res.status(201).json({ success: true, user });
+      res.status(201).json({ success: true, data: user });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  // Get comprehensive user details (single endpoint)
+  async getUserDetails(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const result = await adminUserService.getUserDetails(userId);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -53,12 +74,12 @@ export class AdminUserController {
       const user = await adminUserService.getUserById(userId);
       
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ success: false, error: 'User not found' });
       }
 
-      res.json({ user });
+      res.json({ success: true, data: user });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -70,9 +91,9 @@ export class AdminUserController {
       const adminId = (req as any).admin.id;
 
       const user = await adminUserService.updateUser(userId, updateData, adminId);
-      res.json({ success: true, user });
+      res.json({ success: true, data: user });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ success: false, error: error.message });
     }
   }
 
@@ -84,9 +105,9 @@ export class AdminUserController {
       const adminId = (req as any).admin.id;
 
       const user = await adminUserService.updateUserStatus(userId, { isActive, role }, adminId);
-      res.json({ success: true, user });
+      res.json({ success: true, data: user });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ success: false, error: error.message });
     }
   }
 
@@ -211,14 +232,14 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page, limit } = req.query;
 
-      const activities = await adminUserService.getUserActivity(userId, {
+      const result = await adminUserService.getUserActivity(userId, {
         page: page ? parseInt(page as string) : undefined,
         limit: limit ? parseInt(limit as string) : undefined
       });
 
-      res.json({ activities });
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -287,7 +308,12 @@ export class AdminUserController {
       const { subject, message, actionRequired, sendEmail, sendPushNotification } = req.body;
       const adminId = (req as any).admin.id;
 
-      const result = await adminUserService.sendMessageToUser(userId, adminId, {
+      // Set timeout for the entire operation (15 seconds)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+
+      const servicePromise = adminUserService.sendMessageToUser(userId, adminId, {
         subject,
         message,
         actionRequired,
@@ -295,9 +321,26 @@ export class AdminUserController {
         sendPushNotification
       });
 
+      const result = await Promise.race([servicePromise, timeoutPromise]);
       res.json(result);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Controller error in sendMessageToUser:', error);
+      if (error.message === 'Request timeout') {
+        res.status(408).json({ success: false, error: 'Request timeout - message may have been sent' });
+      } else {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  }
+
+  async getUserProjects(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      const result = await adminUserService.getUserProjects(userId, Number(page), Number(limit));
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -306,9 +349,9 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page = 1, limit = 10 } = req.query;
       const result = await adminUserService.getUserDocuments(userId, Number(page), Number(limit));
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -317,9 +360,9 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page = 1, limit = 10 } = req.query;
       const result = await adminUserService.getUserJobs(userId, Number(page), Number(limit));
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -328,9 +371,9 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page = 1, limit = 10 } = req.query;
       const result = await adminUserService.getUserChallenges(userId, Number(page), Number(limit));
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -339,9 +382,9 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page = 1, limit = 10 } = req.query;
       const result = await adminUserService.getUserTransactions(userId, Number(page), Number(limit));
-      res.json({ success: true, ...result });
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -349,9 +392,9 @@ export class AdminUserController {
     try {
       const { userId } = req.params;
       const result = await adminUserService.getUserWallet(userId);
-      res.json(result);
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -359,9 +402,9 @@ export class AdminUserController {
     try {
       const { userId } = req.params;
       const result = await adminUserService.getUserPaymentMethods(userId);
-      res.json(result);
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -369,9 +412,44 @@ export class AdminUserController {
     try {
       const { userId } = req.params;
       const result = await adminUserService.getUserSubscription(userId);
-      res.json(result);
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Send email to individual user
+  async sendEmailToUser(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const { subject, message } = req.body;
+      const adminId = (req as any).admin.id;
+
+      const result = await adminUserService.sendEmailToUser(userId, adminId, {
+        subject,
+        message
+      });
+
+      res.json({ success: true, result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Bulk email to users
+  async bulkEmail(req: Request, res: Response) {
+    try {
+      const { userIds, subject, message } = req.body;
+      const adminId = (req as any).admin.id;
+
+      const result = await adminUserService.sendBulkEmail(userIds, adminId, {
+        subject,
+        message
+      });
+
+      res.json({ success: true, result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 
@@ -380,9 +458,9 @@ export class AdminUserController {
       const { userId } = req.params;
       const { page = 1, limit = 20 } = req.query;
       const result = await adminUserService.getUserPaymentHistory(userId, Number(page), Number(limit));
-      res.json(result);
+      res.json({ success: true, data: result });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }

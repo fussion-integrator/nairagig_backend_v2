@@ -44,9 +44,11 @@ router.use(authenticateAdmin);
 // Dashboard routes
 router.get('/dashboard', adminDashboardController.getDashboard.bind(adminDashboardController));
 router.get('/stats', adminDashboardController.getStats.bind(adminDashboardController));
+router.get('/system/health', adminDashboardController.getSystemHealth.bind(adminDashboardController));
 router.get('/activities', adminDashboardController.getActivities.bind(adminDashboardController));
 
 // User management routes
+router.get('/users/stats', adminUserController.getUserStats.bind(adminUserController));
 router.get('/users/export', adminUserController.exportUsers.bind(adminUserController));
 router.get('/users', adminUserController.getUsers.bind(adminUserController));
 router.post('/users', adminUserController.createUser.bind(adminUserController));
@@ -66,6 +68,7 @@ router.post('/users/:userId/send-message', adminUserController.sendMessageToUser
 router.get('/users/:userId/activity', adminUserController.getUserActivity.bind(adminUserController));
 
 // User detail endpoints
+router.get('/users/:userId/details', adminUserController.getUserDetails.bind(adminUserController));
 router.get('/users/:userId/documents', adminUserController.getUserDocuments.bind(adminUserController));
 router.get('/users/:userId/jobs', adminUserController.getUserJobs.bind(adminUserController));
 router.get('/users/:userId/challenges', adminUserController.getUserChallenges.bind(adminUserController));

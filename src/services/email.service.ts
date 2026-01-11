@@ -1,8 +1,6 @@
-import nodemailer from 'nodemailer';
-import { config } from '@/config/config';
-import { logger } from '@/utils/logger';
-import fs from 'fs';
-import path from 'path';
+import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface EmailOptions {
   to: string | string[];
@@ -19,15 +17,18 @@ class EmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: 'smtp.hostinger.com',
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       auth: {
         user: 'hello@nairagig.com',
         pass: 'Skiesinger1128@@'
       },
       tls: {
         rejectUnauthorized: false
-      }
+      },
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000
     });
   }
 
@@ -36,7 +37,7 @@ class EmailService {
       const templatePath = path.join(__dirname, '../templates/emails', `${templateName}.html`);
       return fs.readFileSync(templatePath, 'utf-8');
     } catch (error) {
-      logger.error(`Failed to load email template: ${templateName}`, error);
+      console.error(`Failed to load email template: ${templateName}`, error);
       throw new Error(`Email template not found: ${templateName}`);
     }
   }
@@ -66,30 +67,21 @@ class EmailService {
 
       const mailOptions = {
         from: {
-          name: 'NairaGig Security Team',
+          name: 'NairaGig Team',
           address: 'hello@nairagig.com'
         },
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         html: htmlContent,
         cc: options.cc ? (Array.isArray(options.cc) ? options.cc.join(', ') : options.cc) : undefined,
-        bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(', ') : options.bcc) : undefined,
-        headers: {
-          'X-Priority': '3',
-          'X-MSMail-Priority': 'Normal',
-          'Importance': 'normal',
-          'X-Mailer': 'NairaGig Email Service',
-          'List-Unsubscribe': '<mailto:unsubscribe@nairagig.com>',
-          'Authentication-Results': 'nairagig.com; spf=pass; dkim=pass',
-          'X-Spam-Status': 'No'
-        }
+        bcc: options.bcc ? (Array.isArray(options.bcc) ? options.bcc.join(', ') : options.bcc) : undefined
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      logger.info(`Email sent successfully to ${options.to}`, { messageId: result.messageId });
+      console.log(`Email sent successfully to ${options.to}`, { messageId: result.messageId });
       return true;
-    } catch (error) {
-      logger.error('Failed to send email', error);
+    } catch (error: any) {
+      console.error('Failed to send email', { error: error.message, to: options.to });
       return false;
     }
   }
@@ -139,7 +131,7 @@ class EmailService {
     });
   }
 
-  async sendAccountActivation(firstName: string, email: string, progressPercentage: number, activationLink: string, daysLeft: number) {
+  async sendAccountActivationProgress(firstName: string, email: string, progressPercentage: number, activationLink: string, daysLeft: number) {
     const getStatusIcon = (completed: boolean) => completed ? '✅' : '⭕';
     
     return this.sendEmail({
@@ -184,6 +176,25 @@ class EmailService {
       subject: 'Account Activated - Welcome to Full Access!',
       template: 'account-activated',
       data: { firstName }
+    });
+  }
+
+  async sendPasswordReset(firstName: string, email: string, data: {
+    temporaryPassword: string;
+    resetUrl: string;
+    expiresIn: string;
+  }) {
+    return this.sendEmail({
+      to: email,
+      subject: 'Password Reset - Action Required',
+      template: 'password-reset',
+      data: {
+        firstName,
+        temporaryPassword: data.temporaryPassword,
+        resetUrl: data.resetUrl,
+        expiresIn: data.expiresIn,
+        resetDate: new Date().toLocaleDateString()
+      }
     });
   }
 
@@ -430,24 +441,7 @@ class EmailService {
   }
 
   // Payment emails
-  async sendPaymentReceived(email: string, amount: string, projectTitle: string, paymentMethod: string) {
-    return this.sendEmail({
-      to: email,
-      subject: 'Payment Received - NairaGig',
-      template: 'payment-received',
-      data: { amount, projectTitle, paymentMethod }
-    });
-  }
 
-  // Challenge emails
-  async sendChallengeRegistration(email: string, challengeTitle: string, submissionDeadline: string) {
-    return this.sendEmail({
-      to: email,
-      subject: `Challenge Registration Confirmed - ${challengeTitle}`,
-      template: 'challenge-registration',
-      data: { challengeTitle, registrationDate: new Date().toLocaleDateString(), submissionDeadline }
-    });
-  }
 
   // Security emails
   async sendSecurityAlert(email: string, activity: string, location: string) {
@@ -1045,7 +1039,7 @@ class EmailService {
     };
 
     const result = await this.transporter.sendMail(mailOptions);
-    logger.info(`2FA code sent to ${email}`, { messageId: result.messageId });
+    console.log(`2FA code sent to ${email}`, { messageId: result.messageId });
     return true;
   }
 
