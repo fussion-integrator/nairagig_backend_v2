@@ -1,0 +1,76 @@
+-- Add missing fields to existing tables
+
+-- Update Job table
+ALTER TABLE Job ADD COLUMN IF NOT EXISTS paymentStatus VARCHAR(50) DEFAULT 'pending';
+ALTER TABLE Job ADD COLUMN IF NOT EXISTS hiredFreelancerId VARCHAR(255);
+ALTER TABLE Job ADD COLUMN IF NOT EXISTS managedByNairagig BOOLEAN DEFAULT false;
+
+-- Create Payment table if not exists
+CREATE TABLE IF NOT EXISTS Payment (
+  id VARCHAR(255) PRIMARY KEY,
+  jobId VARCHAR(255) NOT NULL,
+  freelancerId VARCHAR(255),
+  clientId VARCHAR(255),
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  type VARCHAR(100) NOT NULL,
+  description TEXT,
+  transactionId VARCHAR(255),
+  method VARCHAR(100),
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (jobId) REFERENCES Job(id) ON DELETE CASCADE
+);
+
+-- Create Dispute table if not exists
+CREATE TABLE IF NOT EXISTS Dispute (
+  id VARCHAR(255) PRIMARY KEY,
+  jobId VARCHAR(255) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status VARCHAR(50) DEFAULT 'open',
+  priority VARCHAR(50) DEFAULT 'medium',
+  raisedBy VARCHAR(50) NOT NULL,
+  raisedById VARCHAR(255) NOT NULL,
+  resolution TEXT,
+  resolvedAt TIMESTAMP NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (jobId) REFERENCES Job(id) ON DELETE CASCADE
+);
+
+-- Create ActivityLog table if not exists
+CREATE TABLE IF NOT EXISTS ActivityLog (
+  id VARCHAR(255) PRIMARY KEY,
+  jobId VARCHAR(255) NOT NULL,
+  action VARCHAR(255) NOT NULL,
+  description TEXT,
+  performer VARCHAR(255),
+  performerId VARCHAR(255),
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (jobId) REFERENCES Job(id) ON DELETE CASCADE
+);
+
+-- Create Conversation table if not exists
+CREATE TABLE IF NOT EXISTS Conversation (
+  id VARCHAR(255) PRIMARY KEY,
+  jobId VARCHAR(255) NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (jobId) REFERENCES Job(id) ON DELETE CASCADE
+);
+
+-- Create Message table if not exists
+CREATE TABLE IF NOT EXISTS Message (
+  id VARCHAR(255) PRIMARY KEY,
+  conversationId VARCHAR(255) NOT NULL,
+  senderId VARCHAR(255) NOT NULL,
+  senderType VARCHAR(50) NOT NULL,
+  content TEXT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversationId) REFERENCES Conversation(id) ON DELETE CASCADE
+);
+
+-- Update Application table
+ALTER TABLE Application ADD COLUMN IF NOT EXISTS rejectionReason TEXT;
+ALTER TABLE Application ADD COLUMN IF NOT EXISTS portfolioItems JSON;

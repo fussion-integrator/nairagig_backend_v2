@@ -245,6 +245,7 @@ model User {
   verification              UserVerification?
   wallets                   Wallet[]
   twoFactorCodes            TwoFactorCode[]
+  hiredFreelancers    Job[]             @relation("HiredFreelancer")
   jobActivityLogs         JobActivityLog[]      @relation("JobActivityPerformer")
   securityIncidents         SecurityIncident[]
   jobSearchLogs             JobSearchLog[]
@@ -428,16 +429,21 @@ model Job {
   flaggedAt           DateTime?
   flaggedBy           String?
   publishedAt         DateTime?
+  paymentStatus       String           @default("pending") @map("paymentstatus")
+  hiredFreelancerId   String?
   applications        JobApplication[]
   questions           JobQuestion[]
   awardedFreelancer   User?            @relation("AwardedJobs", fields: [awardedTo], references: [id])
   category            Category?        @relation(fields: [categoryId], references: [id])
   client              User             @relation("ClientJobs", fields: [clientId], references: [id])
+  hiredFreelancer     User?            @relation("HiredFreelancer", fields: [hiredFreelancerId], references: [id])
   project             Project?
   bookmarks           JobBookmark[]
   conversations       Conversation[]   @relation("JobConversations")
-  disputes            Dispute[]        @relation("JobDisputes")
-  payments            Transaction[]    @relation("JobPayments")
+  transactions      Transaction[]    @relation("JobTransactions")
+  oldDisputes       Dispute[]        @relation("JobDisputesOld")
+  disputes          JobDispute[]     @relation("JobDisputes")
+  payments          JobPayment[]     @relation("JobPayments")
   activityLogs        JobActivityLog[]
 
   @@map("jobs")
@@ -471,6 +477,7 @@ model JobApplication {
   reviewedAt         DateTime?
   submittedAt        DateTime          @default(now())
   timelineUnit       String?
+  rejectionReason    String?
   freelancer         User              @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
   job                Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
@@ -640,7 +647,7 @@ model Transaction {
   jobId             String?
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   wallet            Wallet?           @relation(fields: [walletId], references: [id])
-  job               Job?              @relation("JobPayments", fields: [jobId], references: [id])
+  job               Job?              @relation("JobTransactions", fields: [jobId], references: [id])
 
   @@map("transactions")
 }
@@ -753,6 +760,42 @@ model PaymentHistory {
   @@map("payment_history")
 }
 
+model JobPayment {
+  id            String            @id @default(dbgenerated("gen_random_uuid()::text"))
+  jobId         String            @map("jobid")
+  freelancerId  String?           @map("freelancerid")
+  clientId      String?           @map("clientid")
+  amount        Decimal           @db.Decimal(10,2)
+  status        String?           @default("pending") @db.VarChar(50)
+  type          String            @db.VarChar(100)
+  description   String?
+  transactionId String?           @map("transactionid") @db.VarChar(255)
+  method        String?           @db.VarChar(100)
+  createdAt     DateTime?         @default(now()) @map("createdat")
+  updatedAt     DateTime?         @default(now()) @map("updatedat")
+  job           Job               @relation("JobPayments", fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("job_payments")
+}
+
+model JobDispute {
+  id            String            @id @default(dbgenerated("gen_random_uuid()::text"))
+  jobId         String            @map("jobid")
+  title         String            @db.VarChar(255)
+  description   String?
+  status        String?           @default("open") @db.VarChar(50)
+  priority      String?           @default("medium") @db.VarChar(50)
+  raisedBy      String            @map("raisedby") @db.VarChar(50)
+  raisedById    String            @map("raisedbyid")
+  resolution    String?
+  resolvedAt    DateTime?         @map("resolvedat")
+  createdAt     DateTime?         @default(now()) @map("createdat")
+  updatedAt     DateTime?         @default(now()) @map("updatedat")
+  job           Job               @relation("JobDisputes", fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("job_disputes")
+}
+
 model JobActivityLog {
   id          String   @id @default(uuid())
   jobId       String
@@ -760,6 +803,7 @@ model JobActivityLog {
   description String
   metadata    Json     @default("{}")
   performedBy String?
+  performerId String?
   createdAt   DateTime @default(now())
   job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   performer   User?    @relation("JobActivityPerformer", fields: [performedBy], references: [id])
@@ -1449,7 +1493,7 @@ model Dispute {
   againstUser   User              @relation("DisputesAgainst", fields: [againstUserId], references: [id])
   contract      Contract?         @relation(fields: [contractId], references: [id])
   project       Project?          @relation(fields: [projectId], references: [id])
-  job           Job?              @relation("JobDisputes", fields: [jobId], references: [id])
+  job           Job?              @relation("JobDisputesOld", fields: [jobId], references: [id])
   raisedByUser  User              @relation("RaisedDisputes", fields: [raisedBy], references: [id])
   resolver      User?             @relation("ResolvedDisputes", fields: [resolvedBy], references: [id])
 

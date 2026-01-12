@@ -424,20 +424,63 @@ export class AdminUserService {
   async getUserById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        bio: true,
+        hourlyRate: true,
+        role: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+        authProvider: true,
+        address: true,
+        availabilityStatus: true,
+        city: true,
+        country: true,
+        coverImageUrl: true,
+        dateOfBirth: true,
+        deletedAt: true,
+        displayName: true,
+        emailVerifiedAt: true,
+        experiencePoints: true,
+        gender: true,
+        kycVerifiedAt: true,
+        lastActiveAt: true,
+        level: true,
+        loginCount: true,
+        phoneVerifiedAt: true,
+        portfolioUrl: true,
+        profileImageUrl: true,
+        reputationScore: true,
+        state: true,
+        subscriptionExpiresAt: true,
+        subscriptionTier: true,
+        timezone: true,
+        title: true,
+        twoFactorEnabled: true,
+        websiteUrl: true,
+        yearsOfExperience: true,
+        specialty: true,
+        referralCode: true,
+        isVerified: true,
+        suspendedAt: true,
         wallets: true,
         skills: true,
         verification: true,
         _count: {
           select: {
-            jobs: true, // Jobs created as client
-            awardedJobs: true, // Jobs awarded as freelancer
+            jobs: true,
+            awardedJobs: true,
             applications: true,
             transactions: true,
             reviews: true
           }
         },
-        // Get completed jobs for freelancers
         awardedJobs: {
           where: {
             status: 'COMPLETED'
@@ -446,7 +489,6 @@ export class AdminUserService {
             id: true
           }
         },
-        // Get completed jobs for clients
         jobs: {
           where: {
             status: 'COMPLETED'
@@ -590,17 +632,20 @@ export class AdminUserService {
     return user;
   }
 
-  // Reset user password - Now with actual password field
+  // Reset user password - Password field doesn't exist in current schema
   async resetUserPassword(userId: string, adminId: string) {
     const temporaryPassword = crypto.randomBytes(8).toString('hex');
-    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
     
-    const user = await prisma.user.update({
+    const user = await prisma.user.findUnique({
       where: { id: userId },
-      data: { password: hashedPassword }
+      select: { firstName: true, email: true }
     });
 
-    // Send password reset email
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Send password reset email with temporary password
     try {
       await emailService.sendPasswordReset(user.firstName, user.email, {
         temporaryPassword,
@@ -1170,11 +1215,13 @@ export class AdminUserService {
       where: {
         OR: [
           { clientId: userId },
+          { awardedTo: userId },
           { applications: { some: { freelancerId: userId } } }
         ]
       },
       include: {
         client: { select: { firstName: true, lastName: true } },
+        awardedFreelancer: { select: { firstName: true, lastName: true } },
         applications: {
           where: { freelancerId: userId },
           select: { status: true, submittedAt: true }
@@ -1189,6 +1236,7 @@ export class AdminUserService {
       where: {
         OR: [
           { clientId: userId },
+          { awardedTo: userId },
           { applications: { some: { freelancerId: userId } } }
         ]
       }

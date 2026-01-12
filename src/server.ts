@@ -69,6 +69,7 @@ import facebookAmbassadorRoutes from '@/routes/facebook-ambassador.routes';
 import twitterAmbassadorRoutes from '@/routes/twitter-ambassador.routes';
 import contentCreatorRoutes from '@/routes/content-creator.routes';
 import phoneVerificationRoutes from '@/routes/phone-verification.routes';
+import jobManagementRoutes from '@/routes/jobManagement.routes';
 import nairaPlugRoutes from '@/routes/nairaplug.routes';
 
 const app = express();
@@ -222,6 +223,7 @@ app.use(`${apiPrefix}/billing`, billingRoutes);
 app.use(`${apiPrefix}/rewards`, rewardRoutes);
 app.use(`${apiPrefix}/admin/rewards`, adminRewardRoutes);
 app.use(`${apiPrefix}/admin/jobs`, adminJobRoutes);
+app.use(`${apiPrefix}/admin/job-management`, jobManagementRoutes);
 app.use(`${apiPrefix}/verifications`, verificationRoutes);
 app.use(`${apiPrefix}/proposals`, proposalRoutes);
 app.use(`${apiPrefix}/contracts`, contractRoutes);

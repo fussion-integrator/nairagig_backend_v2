@@ -1,0 +1,15 @@
+model SystemChallengeAudit {
+  id            String   @id @default(uuid())
+  challengeType String   // 'LINKEDIN', 'FACEBOOK', 'TWITTER', 'CONTENT_CREATOR', 'REFERRAL'
+  action        String   // 'APPROVE_MILESTONE', 'REJECT_MILESTONE', 'APPROVE_POST', 'REJECT_POST', 'UPDATE_PARAMS'
+  adminId       String
+  userId        String?
+  resourceId    String?  // milestone ID, post ID, etc.
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  
+  admin         User     @relation("AdminAuditLogs", fields: [adminId], references: [id])
+  user          User?    @relation("UserAuditLogs", fields: [userId], references: [id])
+
+  @@map("system_challenge_audits")
+}
