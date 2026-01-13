@@ -266,6 +266,7 @@ model User {
   postBookmarks             PostBookmark[]        @relation("PostBookmarks")
   postMentions              PostMention[]         @relation("PostMentions")
   documents                 Document[]
+  systemChallengeAudits     SystemChallengeAudit[] @relation("UserSystemChallengeAudits")
 
   @@map("users")
 }
@@ -2432,6 +2433,7 @@ model Admin {
   sponsorshipRequests       SponsorshipRequest[]      @relation("ReviewedSponsorshipRequests")
   adminRole         AdminRole?          @relation("AdminToRole", fields: [roleId], references: [id])
   documentReviews   Document[]          @relation("DocumentReviews")
+  systemChallengeAudits SystemChallengeAudit[] @relation("SystemChallengeAudits")
 
   @@map("admins")
 }
@@ -2698,6 +2700,36 @@ model PostMedia {
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   
   @@map("post_media")
+}
+
+model SystemChallengeAudit {
+  id            String   @id @default(uuid())
+  challengeType String   // 'LINKEDIN', 'FACEBOOK', 'TWITTER', 'CONTENT_CREATOR', 'REFERRAL'
+  action        String   // 'APPROVE_MILESTONE', 'REJECT_MILESTONE', 'APPROVE_POST', 'REJECT_POST', 'UPDATE_PARAMS'
+  adminId       String
+  userId        String?
+  resourceId    String?  // milestone ID, post ID, etc.
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  
+  admin         Admin    @relation("SystemChallengeAudits", fields: [adminId], references: [id])
+  user          User?    @relation("UserSystemChallengeAudits", fields: [userId], references: [id])
+
+  @@map("system_challenge_audits")
+}
+
+model SystemChallengeConfig {
+  id              String   @id @default(uuid())
+  challengeType   String   @unique // 'LINKEDIN', 'FACEBOOK', 'TWITTER', 'CONTENT_CREATOR', 'REFERRAL'
+  isActive        Boolean  @default(true)
+  milestoneTargets Json    @default("{}")
+  rewardAmounts   Json     @default("{}")
+  settings        Json     @default("{}")
+  resources       Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_challenge_configs")
 }
 
 enum PostCategory {

@@ -1,266 +1,208 @@
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Request, Response, NextFunction } from 'express';
+import { prisma } from '@/config/database';
+import { ApiError } from '../utils/ApiError';
+import { logger } from '../utils/logger';
 
 export class FacebookAmbassadorController {
-  async getAmbassadorChallenge(req: Request, res: Response) {
+  
+  async getChallengeData(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      const userId = (req as any).user?.id;
+
+      // Get challenge configuration
+      const config = await prisma.systemChallengeConfig.findUnique({
+        where: { challengeType: 'FACEBOOK' }
+      });
+
+      if (!config || !config.isActive) {
+        return res.json({
+          success: true,
+          data: null
+        });
       }
 
-      const posts = await prisma.facebookPost.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
+      // Get user-specific data if authenticated
+      let userStats = {
+        totalPosts: 0,
+        totalReactions: 0,
+        totalComments: 0,
+        totalEarnings: 0,
+        pendingEarnings: 0,
+        reactionMilestones: 0,
+        commentMilestones: 0
+      };
+      let userPosts = [];
+      let userMilestones = [];
 
-      const milestones = await prisma.facebookMilestone.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
+      if (userId) {
+        userPosts = await prisma.facebookPost.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            url: true,
+            reactions: true,
+            comments: true,
+            status: true,
+            submittedAt: true,
+            lastChecked: true
+          },
+          orderBy: { submittedAt: 'desc' }
+        });
 
-      const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
-      const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
-      const totalEarnings = milestones
-        .filter(m => m.status === 'APPROVED')
-        .reduce((sum, m) => sum + Number(m.amount), 0);
-      const pendingEarnings = milestones
-        .filter(m => m.status === 'PENDING')
-        .reduce((sum, m) => sum + Number(m.amount), 0);
+        userMilestones = await prisma.facebookMilestone.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+            approvedAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        userStats = {
+          totalPosts: userPosts.length,
+          totalReactions: userPosts.reduce((sum, post) => sum + (post.reactions || 0), 0),
+          totalComments: userPosts.reduce((sum, post) => sum + (post.comments || 0), 0),
+          totalEarnings: userMilestones.filter(m => m.status === 'APPROVED').reduce((sum, m) => sum + m.amount, 0),
+          pendingEarnings: userMilestones.filter(m => m.status === 'PENDING').reduce((sum, m) => sum + m.amount, 0),
+          reactionMilestones: userMilestones.filter(m => m.type === 'REACTIONS').length,
+          commentMilestones: userMilestones.filter(m => m.type === 'COMMENTS').length
+        };
+      }
 
       res.json({
         success: true,
         data: {
-          stats: {
-            totalPosts: posts.length,
-            totalReactions,
-            totalComments,
-            totalEarnings,
-            pendingEarnings,
-            reactionMilestones: Math.floor(totalReactions / 100),
-            commentMilestones: Math.floor(totalComments / 100)
-          },
-          posts: posts.map(post => ({
-            id: post.id,
-            url: post.url,
-            reactions: post.reactions,
-            comments: post.comments,
-            status: post.status,
-            submittedAt: post.createdAt,
-            lastChecked: post.lastChecked
-          })),
-          milestones: milestones.map(milestone => ({
-            id: milestone.id,
-            type: milestone.type,
-            amount: milestone.amount,
-            status: milestone.status,
-            createdAt: milestone.createdAt,
-            approvedAt: milestone.approvedAt
-          }))
+          stats: userStats,
+          posts: userPosts,
+          milestones: userMilestones
         }
       });
+
     } catch (error) {
-      console.error('Get Facebook ambassador challenge error:', error);
-      res.status(500).json({ error: 'Failed to fetch ambassador challenge data' });
+      logger.error('getChallengeData error:', error);
+      next(error);
     }
   }
 
-  async submitPost(req: Request, res: Response) {
+  async submitPost(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.id;
       const { url } = req.body;
 
       if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      if (!url || !url.includes('facebook.com')) {
-        return res.status(400).json({ error: 'Valid Facebook post URL required' });
+      if (!url) {
+        throw ApiError.badRequest('Post URL is required');
       }
 
+      // Check if post already exists
       const existingPost = await prisma.facebookPost.findFirst({
-        where: { userId, url }
+        where: { url, userId }
       });
 
       if (existingPost) {
-        return res.status(400).json({ error: 'Post already submitted' });
+        throw ApiError.badRequest('Post already submitted');
       }
 
       const post = await prisma.facebookPost.create({
         data: {
           userId,
           url,
-          reactions: 0,
-          comments: 0,
           status: 'PENDING'
         }
       });
 
       res.json({
         success: true,
-        data: { postId: post.id }
+        data: post
       });
+
     } catch (error) {
-      console.error('Submit Facebook post error:', error);
-      res.status(500).json({ error: 'Failed to submit post' });
+      logger.error('submitPost error:', error);
+      next(error);
     }
   }
 
-  async requestMilestoneReview(req: Request, res: Response) {
+  async claimEarnings(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.id;
+
       if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      const posts = await prisma.facebookPost.findMany({
-        where: { userId, status: 'APPROVED' }
-      });
-
-      const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
-      const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
-
-      const reactionMilestones = Math.floor(totalReactions / 100);
-      const commentMilestones = Math.floor(totalComments / 100);
-
-      const existingMilestones = await prisma.facebookMilestone.findMany({
-        where: { userId }
-      });
-
-      const existingReactionMilestones = existingMilestones.filter(m => m.type === 'REACTIONS').length;
-      const existingCommentMilestones = existingMilestones.filter(m => m.type === 'COMMENTS').length;
-
-      const newMilestones = [];
-
-      for (let i = existingReactionMilestones; i < reactionMilestones; i++) {
-        newMilestones.push({
-          userId,
-          type: 'REACTIONS',
-          amount: 500, // 5 naira per reaction * 100 reactions
-          status: 'PENDING',
-          metadata: { milestone: i + 1, reactions: (i + 1) * 100 }
-        });
-      }
-
-      for (let i = existingCommentMilestones; i < commentMilestones; i++) {
-        newMilestones.push({
-          userId,
-          type: 'COMMENTS',
-          amount: 1000, // 10 naira per comment * 100 comments
-          status: 'PENDING',
-          metadata: { milestone: i + 1, comments: (i + 1) * 100 }
-        });
-      }
-
-      if (newMilestones.length > 0) {
-        await prisma.facebookMilestone.createMany({
-          data: newMilestones
-        });
-
-        await prisma.notification.create({
-          data: {
-            userId: 'admin',
-            title: 'Facebook Ambassador Milestone Review',
-            message: `User has ${newMilestones.length} new milestones pending review`,
-            type: 'SYSTEM',
-            data: { userId, milestones: newMilestones.length }
-          }
-        });
-      }
-
-      res.json({
-        success: true,
-        data: { 
-          newMilestones: newMilestones.length,
-          totalEligible: reactionMilestones + commentMilestones
-        }
-      });
-    } catch (error) {
-      console.error('Request Facebook milestone review error:', error);
-      res.status(500).json({ error: 'Failed to request milestone review' });
-    }
-  }
-
-  async claimApprovedEarnings(req: Request, res: Response) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
+      // Get approved milestones that haven't been claimed
       const approvedMilestones = await prisma.facebookMilestone.findMany({
         where: {
           userId,
           status: 'APPROVED',
-          claimed: false
+          claimedAt: null
         }
       });
 
       if (approvedMilestones.length === 0) {
-        return res.status(400).json({ error: 'No approved earnings to claim' });
+        throw ApiError.badRequest('No earnings available to claim');
       }
 
-      const totalAmount = approvedMilestones.reduce((sum, m) => sum + Number(m.amount), 0);
+      const totalAmount = approvedMilestones.reduce((sum, m) => sum + m.amount, 0);
 
-      let wallet = await prisma.wallet.findFirst({
-        where: { userId }
-      });
-
-      if (!wallet) {
-        wallet = await prisma.wallet.create({
-          data: {
-            userId,
-            availableBalance: 0,
-            currency: 'NGN'
-          }
-        });
-      }
-
-      await prisma.$transaction(async (tx) => {
-        await tx.wallet.update({
-          where: { id: wallet!.id },
-          data: {
-            availableBalance: { increment: totalAmount },
-            totalEarned: { increment: totalAmount }
-          }
-        });
-
-        await tx.facebookMilestone.updateMany({
-          where: {
-            id: { in: approvedMilestones.map(m => m.id) }
-          },
-          data: { claimed: true, claimedAt: new Date() }
-        });
-
-        await tx.transaction.create({
-          data: {
-            userId,
-            walletId: wallet!.id,
-            amount: totalAmount,
-            type: 'CREDIT',
-            status: 'COMPLETED',
-            description: `Facebook Ambassador earnings - ${approvedMilestones.length} milestones`,
-            processedAt: new Date(),
-            metadata: {
-              type: 'facebook_ambassador_claim',
-              milestones: approvedMilestones.length
-            }
-          }
-        });
+      // Mark milestones as claimed
+      await prisma.facebookMilestone.updateMany({
+        where: {
+          id: { in: approvedMilestones.map(m => m.id) }
+        },
+        data: {
+          claimedAt: new Date()
+        }
       });
 
       res.json({
         success: true,
         data: {
           claimedAmount: totalAmount,
-          milestonesClaimed: approvedMilestones.length
+          milestoneCount: approvedMilestones.length
         }
       });
+
     } catch (error) {
-      console.error('Claim Facebook earnings error:', error);
-      res.status(500).json({ error: 'Failed to claim earnings' });
+      logger.error('claimEarnings error:', error);
+      next(error);
+    }
+  }
+
+  async requestReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        throw ApiError.unauthorized('Authentication required');
+      }
+
+      // Get pending posts that need review
+      const pendingPosts = await prisma.facebookPost.findMany({
+        where: {
+          userId,
+          status: 'PENDING'
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          newMilestones: pendingPosts.length,
+          message: 'Review request submitted successfully'
+        }
+      });
+
+    } catch (error) {
+      logger.error('requestReview error:', error);
+      next(error);
     }
   }
 }

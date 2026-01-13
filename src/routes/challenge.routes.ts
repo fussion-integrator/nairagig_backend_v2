@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { ChallengeController } from '@/controllers/challenge.controller';
-import { authenticate, authorize } from '@/middleware/auth';
+import { authenticate, authorize, optionalAuth } from '@/middleware/auth';
 
 const router = Router();
 const challengeController = new ChallengeController();
 
 // Public routes
-router.get('/', challengeController.getChallenges.bind(challengeController));
-router.get('/:id', challengeController.getChallenge.bind(challengeController));
+router.get('/', optionalAuth, challengeController.getChallenges.bind(challengeController));
+router.get('/:id', optionalAuth, challengeController.getChallenge.bind(challengeController));
 router.get('/:challengeId/leaderboard', challengeController.getLeaderboard.bind(challengeController));
 
 // Protected routes

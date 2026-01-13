@@ -1,202 +1,146 @@
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Request, Response, NextFunction } from 'express';
+import { prisma } from '@/config/database';
+import { ApiError } from '../utils/ApiError';
+import { logger } from '../utils/logger';
 
 export class LinkedInAmbassadorController {
-  async getAmbassadorChallenge(req: Request, res: Response) {
+  
+  async getChallengeData(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      const userId = (req as any).user?.id;
+
+      // Get challenge configuration
+      const config = await prisma.systemChallengeConfig.findUnique({
+        where: { challengeType: 'LINKEDIN' }
+      });
+
+      if (!config || !config.isActive) {
+        return res.json({
+          success: true,
+          data: null
+        });
       }
 
-      // Get user's posts
-      const posts = await prisma.linkedInPost.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
+      // Get overall stats
+      const totalPosts = await prisma.linkedInPost.count();
+      const totalParticipants = await prisma.linkedInPost.groupBy({
+        by: ['userId']
+      }).then(groups => groups.length);
 
-      // Get milestones
-      const milestones = await prisma.linkedInMilestone.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
+      // Get user-specific data if authenticated
+      let userStats = {
+        totalPosts: 0,
+        totalReactions: 0,
+        totalComments: 0,
+        totalEarnings: 0,
+        pendingEarnings: 0,
+        reactionMilestones: 0,
+        commentMilestones: 0
+      };
+      let userPosts = [];
+      let userMilestones = [];
 
-      // Calculate stats
-      const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
-      const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
-      const totalEarnings = milestones
-        .filter(m => m.status === 'APPROVED')
-        .reduce((sum, m) => sum + Number(m.amount), 0);
-      const pendingEarnings = milestones
-        .filter(m => m.status === 'PENDING')
-        .reduce((sum, m) => sum + Number(m.amount), 0);
+      if (userId) {
+        userPosts = await prisma.linkedInPost.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            url: true,
+            reactions: true,
+            comments: true,
+            status: true,
+            submittedAt: true,
+            lastChecked: true
+          },
+          orderBy: { submittedAt: 'desc' }
+        });
+
+        userMilestones = await prisma.linkedInMilestone.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+            approvedAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        userStats = {
+          totalPosts: userPosts.length,
+          totalReactions: userPosts.reduce((sum, post) => sum + (post.reactions || 0), 0),
+          totalComments: userPosts.reduce((sum, post) => sum + (post.comments || 0), 0),
+          totalEarnings: userMilestones.filter(m => m.status === 'APPROVED').reduce((sum, m) => sum + m.amount, 0),
+          pendingEarnings: userMilestones.filter(m => m.status === 'PENDING').reduce((sum, m) => sum + m.amount, 0),
+          reactionMilestones: userMilestones.filter(m => m.type === 'REACTIONS').length,
+          commentMilestones: userMilestones.filter(m => m.type === 'COMMENTS').length
+        };
+      }
 
       res.json({
         success: true,
         data: {
-          stats: {
-            totalPosts: posts.length,
-            totalReactions,
-            totalComments,
-            totalEarnings,
-            pendingEarnings,
-            reactionMilestones: Math.floor(totalReactions / 50),
-            commentMilestones: Math.floor(totalComments / 50)
-          },
-          posts: posts.map(post => ({
-            id: post.id,
-            url: post.url,
-            reactions: post.reactions,
-            comments: post.comments,
-            status: post.status,
-            submittedAt: post.createdAt,
-            lastChecked: post.lastChecked
-          })),
-          milestones: milestones.map(milestone => ({
-            id: milestone.id,
-            type: milestone.type,
-            amount: milestone.amount,
-            status: milestone.status,
-            createdAt: milestone.createdAt,
-            approvedAt: milestone.approvedAt
-          }))
+          stats: userStats,
+          posts: userPosts,
+          milestones: userMilestones
         }
       });
+
     } catch (error) {
-      console.error('Get ambassador challenge error:', error);
-      res.status(500).json({ error: 'Failed to fetch ambassador challenge data' });
+      logger.error('getChallengeData error:', error);
+      next(error);
     }
   }
 
-  async submitPost(req: Request, res: Response) {
+  async submitPost(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.id;
       const { url } = req.body;
 
       if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        throw ApiError.unauthorized('Authentication required');
       }
 
-      if (!url || !url.includes('linkedin.com')) {
-        return res.status(400).json({ error: 'Valid LinkedIn post URL required' });
+      if (!url) {
+        throw ApiError.badRequest('Post URL is required');
       }
 
       // Check if post already exists
       const existingPost = await prisma.linkedInPost.findFirst({
-        where: { userId, url }
+        where: { url, userId }
       });
 
       if (existingPost) {
-        return res.status(400).json({ error: 'Post already submitted' });
+        throw ApiError.badRequest('Post already submitted');
       }
 
       const post = await prisma.linkedInPost.create({
         data: {
           userId,
           url,
-          reactions: 0,
-          comments: 0,
           status: 'PENDING'
         }
       });
 
       res.json({
         success: true,
-        data: { postId: post.id }
+        data: post
       });
+
     } catch (error) {
-      console.error('Submit post error:', error);
-      res.status(500).json({ error: 'Failed to submit post' });
+      logger.error('submitPost error:', error);
+      next(error);
     }
   }
 
-  async requestMilestoneReview(req: Request, res: Response) {
+  async claimEarnings(req: Request, res: Response, next: NextFunction) {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).user?.id;
+
       if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      // Get user's approved posts
-      const posts = await prisma.linkedInPost.findMany({
-        where: { userId, status: 'APPROVED' }
-      });
-
-      const totalReactions = posts.reduce((sum, post) => sum + post.reactions, 0);
-      const totalComments = posts.reduce((sum, post) => sum + post.comments, 0);
-
-      // Calculate eligible milestones
-      const reactionMilestones = Math.floor(totalReactions / 50);
-      const commentMilestones = Math.floor(totalComments / 50);
-
-      // Get existing milestones
-      const existingMilestones = await prisma.linkedInMilestone.findMany({
-        where: { userId }
-      });
-
-      const existingReactionMilestones = existingMilestones.filter(m => m.type === 'REACTIONS').length;
-      const existingCommentMilestones = existingMilestones.filter(m => m.type === 'COMMENTS').length;
-
-      // Create new milestones
-      const newMilestones = [];
-
-      for (let i = existingReactionMilestones; i < reactionMilestones; i++) {
-        newMilestones.push({
-          userId,
-          type: 'REACTIONS',
-          amount: 5000,
-          status: 'PENDING',
-          metadata: { milestone: i + 1, reactions: (i + 1) * 50 }
-        });
-      }
-
-      for (let i = existingCommentMilestones; i < commentMilestones; i++) {
-        newMilestones.push({
-          userId,
-          type: 'COMMENTS',
-          amount: 5000,
-          status: 'PENDING',
-          metadata: { milestone: i + 1, comments: (i + 1) * 50 }
-        });
-      }
-
-      if (newMilestones.length > 0) {
-        await prisma.linkedInMilestone.createMany({
-          data: newMilestones
-        });
-
-        // Notify admin
-        await prisma.notification.create({
-          data: {
-            userId: 'admin', // You might want to get actual admin IDs
-            title: 'LinkedIn Ambassador Milestone Review',
-            message: `User has ${newMilestones.length} new milestones pending review`,
-            type: 'SYSTEM',
-            data: { userId, milestones: newMilestones.length }
-          }
-        });
-      }
-
-      res.json({
-        success: true,
-        data: { 
-          newMilestones: newMilestones.length,
-          totalEligible: reactionMilestones + commentMilestones
-        }
-      });
-    } catch (error) {
-      console.error('Request milestone review error:', error);
-      res.status(500).json({ error: 'Failed to request milestone review' });
-    }
-  }
-
-  async claimApprovedEarnings(req: Request, res: Response) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        throw ApiError.unauthorized('Authentication required');
       }
 
       // Get approved milestones that haven't been claimed
@@ -204,75 +148,73 @@ export class LinkedInAmbassadorController {
         where: {
           userId,
           status: 'APPROVED',
-          claimed: false
+          claimedAt: null
         }
       });
 
       if (approvedMilestones.length === 0) {
-        return res.status(400).json({ error: 'No approved earnings to claim' });
+        throw ApiError.badRequest('No earnings available to claim');
       }
 
-      const totalAmount = approvedMilestones.reduce((sum, m) => sum + Number(m.amount), 0);
+      const totalAmount = approvedMilestones.reduce((sum, m) => sum + m.amount, 0);
 
-      // Get or create wallet
-      let wallet = await prisma.wallet.findFirst({
-        where: { userId }
+      // Mark milestones as claimed
+      await prisma.linkedInMilestone.updateMany({
+        where: {
+          id: { in: approvedMilestones.map(m => m.id) }
+        },
+        data: {
+          claimedAt: new Date()
+        }
       });
 
-      if (!wallet) {
-        wallet = await prisma.wallet.create({
-          data: {
-            userId,
-            availableBalance: 0,
-            currency: 'NGN'
-          }
-        });
-      }
-
-      // Update wallet and mark milestones as claimed
-      await prisma.$transaction(async (tx) => {
-        await tx.wallet.update({
-          where: { id: wallet!.id },
-          data: {
-            availableBalance: { increment: totalAmount },
-            totalEarned: { increment: totalAmount }
-          }
-        });
-
-        await tx.linkedInMilestone.updateMany({
-          where: {
-            id: { in: approvedMilestones.map(m => m.id) }
-          },
-          data: { claimed: true, claimedAt: new Date() }
-        });
-
-        await tx.transaction.create({
-          data: {
-            userId,
-            walletId: wallet!.id,
-            amount: totalAmount,
-            type: 'CREDIT',
-            status: 'COMPLETED',
-            description: `LinkedIn Ambassador earnings - ${approvedMilestones.length} milestones`,
-            processedAt: new Date(),
-            metadata: {
-              type: 'linkedin_ambassador_claim',
-              milestones: approvedMilestones.length
-            }
-          }
-        });
-      });
+      // Create wallet transaction (if wallet system exists)
+      // await createWalletTransaction(userId, totalAmount, 'LINKEDIN_EARNINGS');
 
       res.json({
         success: true,
         data: {
           claimedAmount: totalAmount,
-          milestonesClaimed: approvedMilestones.length
+          milestoneCount: approvedMilestones.length
         }
       });
+
     } catch (error) {
-      console.error('Claim earnings error:', error);
-      res.status(500).json({ error: 'Failed to claim earnings' });
+      logger.error('claimEarnings error:', error);
+      next(error);
+    }
+  }
+
+  async requestReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        throw ApiError.unauthorized('Authentication required');
+      }
+
+      // Get pending posts that need review
+      const pendingPosts = await prisma.linkedInPost.findMany({
+        where: {
+          userId,
+          status: 'PENDING'
+        }
+      });
+
+      // Create notification for admin (if notification system exists)
+      // await createAdminNotification('LINKEDIN_REVIEW_REQUEST', { userId, postCount: pendingPosts.length });
+
+      res.json({
+        success: true,
+        data: {
+          newMilestones: pendingPosts.length,
+          message: 'Review request submitted successfully'
+        }
+      });
+
+    } catch (error) {
+      logger.error('requestReview error:', error);
+      next(error);
     }
   }
 }

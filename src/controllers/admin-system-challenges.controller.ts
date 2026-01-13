@@ -1,144 +1,483 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
 import { AdminSystemChallengesService } from '../services/admin-system-challenges.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminGuard } from '../auth/admin.guard';
-import { GetUser } from '../auth/get-user.decorator';
+import { ApiError } from '../utils/ApiError';
+import { logger } from '../utils/logger';
+import { validationResult } from 'express-validator';
+import { prisma } from '../config/database';
 
-@Controller('admin/system-challenges')
-@UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminSystemChallengesController {
-  constructor(private readonly adminSystemChallengesService: AdminSystemChallengesService) {}
+  private adminSystemChallengesService: AdminSystemChallengesService;
+
+  constructor() {
+    this.adminSystemChallengesService = new AdminSystemChallengesService();
+  }
+
+  // Public methods (no authentication required)
+  async getPublicChallengeConfig(req: Request, res: Response) {
+    try {
+      const { challengeType } = req.params;
+      
+      const result = await this.adminSystemChallengesService.getSystemChallengeConfig(challengeType);
+      
+      if (!result.success) {
+        return res.status(404).json({
+          success: false,
+          error: 'Challenge configuration not found'
+        });
+      }
+
+      // Return only public information, hide admin-specific details
+      const publicConfig = {
+        challengeType: result.data.challengeType,
+        isActive: result.data.isActive,
+        title: result.data.settings?.title || `${challengeType} Challenge`,
+        description: result.data.settings?.description || '',
+        milestones: result.data.milestoneTargets || [],
+        maxParticipants: result.data.settings?.maxParticipants || 0,
+        startDate: result.data.settings?.startDate || '',
+        endDate: result.data.settings?.endDate || ''
+      };
+
+      res.json({
+        success: true,
+        data: publicConfig
+      });
+    } catch (error: any) {
+      logger.error('Error getting public challenge config:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get challenge configuration'
+      });
+    }
+  }
+
+  async getActiveConfigs(req: Request, res: Response) {
+    try {
+      const challengeTypes = ['linkedin', 'twitter', 'facebook', 'referral'];
+      const challenges = [];
+
+      for (const type of challengeTypes) {
+        try {
+          const result = await this.adminSystemChallengesService.getSystemChallengeConfig(type);
+          if (result.success && result.data.isActive) {
+            challenges.push({
+              challengeType: result.data.challengeType,
+              isActive: result.data.isActive,
+              title: result.data.settings?.title || `${type} Challenge`,
+              description: result.data.settings?.description || '',
+              milestones: result.data.milestoneTargets || [],
+              maxParticipants: result.data.settings?.maxParticipants || 0,
+              startDate: result.data.settings?.startDate || '',
+              endDate: result.data.settings?.endDate || ''
+            });
+          }
+        } catch (error) {
+          logger.error(`Error loading ${type} challenge:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        data: challenges
+      });
+    } catch (error: any) {
+      logger.error('Error getting active configs:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get active configurations'
+      });
+    }
+  }
 
   // LinkedIn Ambassador Management
-  @Get('linkedin/participants')
-  async getLinkedInParticipants(@Query() query: any) {
-    return this.adminSystemChallengesService.getLinkedInParticipants(query);
+  async getLinkedInParticipants(req: Request, res: Response, next: NextFunction) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        throw ApiError.badRequest('Invalid request parameters', errors.array());
+      }
+
+      const adminId = (req as any).admin?.id;
+      if (!adminId) {
+        throw ApiError.unauthorized('Admin authentication required');
+      }
+
+      const result = await this.adminSystemChallengesService.getLinkedInParticipants(req.query);
+      res.json(result);
+    } catch (error) {
+      logger.error('getLinkedInParticipants error:', error);
+      next(error);
+    }
   }
 
-  @Get('linkedin/milestones/pending')
-  async getPendingLinkedInMilestones(@Query() query: any) {
-    return this.adminSystemChallengesService.getPendingLinkedInMilestones(query);
+  async getPendingLinkedInMilestones(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getPendingLinkedInMilestones(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('linkedin/milestones/:id/approve')
-  async approveLinkedInMilestone(
-    @Param('id') milestoneId: string,
-    @Body() body: { notes?: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.approveLinkedInMilestone(milestoneId, admin.id, body.notes);
+  async approveLinkedInMilestone(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.approveLinkedInMilestone(id, adminId, notes);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('linkedin/milestones/:id/reject')
-  async rejectLinkedInMilestone(
-    @Param('id') milestoneId: string,
-    @Body() body: { reason: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.rejectLinkedInMilestone(milestoneId, admin.id, body.reason);
+  async rejectLinkedInMilestone(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.rejectLinkedInMilestone(id, adminId, reason);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Get('linkedin/analytics')
-  async getLinkedInAnalytics(@Query() query: any) {
-    return this.adminSystemChallengesService.getLinkedInAnalytics(query);
+  async getLinkedInAnalytics(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getLinkedInAnalytics(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // Facebook Ambassador Management
-  @Get('facebook/participants')
-  async getFacebookParticipants(@Query() query: any) {
-    return this.adminSystemChallengesService.getFacebookParticipants(query);
+  async getFacebookParticipants(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getFacebookParticipants(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Get('facebook/milestones/pending')
-  async getPendingFacebookMilestones(@Query() query: any) {
-    return this.adminSystemChallengesService.getPendingFacebookMilestones(query);
+  async getPendingFacebookMilestones(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getPendingFacebookMilestones(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('facebook/milestones/:id/approve')
-  async approveFacebookMilestone(
-    @Param('id') milestoneId: string,
-    @Body() body: { notes?: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.approveFacebookMilestone(milestoneId, admin.id, body.notes);
+  async approveFacebookMilestone(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.approveFacebookMilestone(id, adminId, notes);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('facebook/milestones/:id/reject')
-  async rejectFacebookMilestone(
-    @Param('id') milestoneId: string,
-    @Body() body: { reason: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.rejectFacebookMilestone(milestoneId, admin.id, body.reason);
+  async rejectFacebookMilestone(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.rejectFacebookMilestone(id, adminId, reason);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // Twitter Ambassador Management
-  @Get('twitter/participants')
-  async getTwitterParticipants(@Query() query: any) {
-    return this.adminSystemChallengesService.getTwitterParticipants(query);
+  async getTwitterParticipants(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getTwitterParticipants(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Get('twitter/milestones/pending')
-  async getPendingTwitterMilestones(@Query() query: any) {
-    return this.adminSystemChallengesService.getPendingTwitterMilestones(query);
+  async getPendingTwitterMilestones(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getPendingTwitterMilestones(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('twitter/milestones/:id/approve')
-  async approveTwitterMilestone(
-    @Param('id') milestoneId: string,
-    @Body() body: { notes?: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.approveTwitterMilestone(milestoneId, admin.id, body.notes);
+  async approveTwitterMilestone(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.approveTwitterMilestone(id, adminId, notes);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // Content Creator Management
-  @Get('content-creator/posts')
-  async getContentCreatorPosts(@Query() query: any) {
-    return this.adminSystemChallengesService.getContentCreatorPosts(query);
+  async getContentCreatorPosts(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getContentCreatorPosts(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('content-creator/posts/:id/approve')
-  async approveContentCreatorPost(
-    @Param('id') postId: string,
-    @Body() body: { notes?: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.approveContentCreatorPost(postId, admin.id, body.notes);
+  async approveContentCreatorPost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.approveContentCreatorPost(id, adminId, notes);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Post('content-creator/posts/:id/reject')
-  async rejectContentCreatorPost(
-    @Param('id') postId: string,
-    @Body() body: { reason: string },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.rejectContentCreatorPost(postId, admin.id, body.reason);
+  async rejectContentCreatorPost(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.rejectContentCreatorPost(id, adminId, reason);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // Referral Challenge Management
-  @Get('referrals/stats')
-  async getReferralStats(@Query() query: any) {
-    return this.adminSystemChallengesService.getReferralStats(query);
+  async getReferralStats(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getReferralStats(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
-  @Get('referrals/participants')
-  async getReferralParticipants(@Query() query: any) {
-    return this.adminSystemChallengesService.getReferralParticipants(query);
+  async getReferralParticipants(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getReferralParticipants(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // Bulk Operations
-  @Post('bulk-approve')
-  async bulkApprove(
-    @Body() body: { type: string; ids: string[] },
-    @GetUser() admin: any
-  ) {
-    return this.adminSystemChallengesService.bulkApprove(body.type, body.ids, admin.id);
+  async bulkApprove(req: Request, res: Response) {
+    try {
+      const { type, ids } = req.body;
+      const adminId = (req as any).admin?.id;
+      const result = await this.adminSystemChallengesService.bulkApprove(type, ids, adminId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Get all system challenge submissions
+  async getAllSystemChallengeSubmissions(req: Request, res: Response) {
+    try {
+      const { challengeType, status, page = 1, limit = 20 } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      let submissions = [];
+      let total = 0;
+
+      switch (challengeType) {
+        case 'linkedin':
+          [submissions, total] = await Promise.all([
+            prisma.linkedInPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              orderBy: { createdAt: 'desc' },
+              skip,
+              take: Number(limit)
+            }),
+            prisma.linkedInPost.count({ where: status ? { status: status as any } : {} })
+          ]);
+          break;
+        case 'twitter':
+          [submissions, total] = await Promise.all([
+            prisma.twitterPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              orderBy: { createdAt: 'desc' },
+              skip,
+              take: Number(limit)
+            }),
+            prisma.twitterPost.count({ where: status ? { status: status as any } : {} })
+          ]);
+          break;
+        case 'facebook':
+          [submissions, total] = await Promise.all([
+            prisma.facebookPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              orderBy: { createdAt: 'desc' },
+              skip,
+              take: Number(limit)
+            }),
+            prisma.facebookPost.count({ where: status ? { status: status as any } : {} })
+          ]);
+          break;
+        default:
+          // Get all submissions from all platforms
+          const [linkedInPosts, twitterPosts, facebookPosts] = await Promise.all([
+            prisma.linkedInPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              take: 10
+            }),
+            prisma.twitterPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              take: 10
+            }),
+            prisma.facebookPost.findMany({
+              where: status ? { status: status as any } : {},
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    profileImageUrl: true
+                  }
+                }
+              },
+              take: 10
+            })
+          ]);
+          
+          submissions = [
+            ...linkedInPosts.map(p => ({ ...p, platform: 'linkedin' })),
+            ...twitterPosts.map(p => ({ ...p, platform: 'twitter' })),
+            ...facebookPosts.map(p => ({ ...p, platform: 'facebook' }))
+          ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          total = submissions.length;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          submissions,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            pages: Math.ceil(total / Number(limit))
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // System Challenge Configuration Management
+  async getSystemChallengeConfig(req: Request, res: Response) {
+    try {
+      const { challengeType } = req.params;
+      const result = await this.adminSystemChallengesService.getSystemChallengeConfig(challengeType);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  async saveSystemChallengeConfig(req: Request, res: Response) {
+    try {
+      const { challengeType } = req.params;
+      const configData = req.body;
+      const adminId = (req as any).admin?.id;
+      
+      if (!adminId) {
+        return res.status(401).json({ success: false, error: 'Admin authentication required' });
+      }
+
+      const result = await this.adminSystemChallengesService.saveSystemChallengeConfig(challengeType, configData, adminId);
+      res.json(result);
+    } catch (error: any) {
+      logger.error('saveSystemChallengeConfig error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Failed to save configuration' });
+    }
   }
 
   // Overall Analytics
-  @Get('analytics/overview')
-  async getSystemChallengesOverview(@Query() query: any) {
-    return this.adminSystemChallengesService.getSystemChallengesOverview(query);
+  async getSystemChallengesOverview(req: Request, res: Response) {
+    try {
+      const result = await this.adminSystemChallengesService.getSystemChallengesOverview(req.query);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 }

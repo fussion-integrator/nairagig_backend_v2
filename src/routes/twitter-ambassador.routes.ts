@@ -1,23 +1,15 @@
 import { Router } from 'express';
 import { TwitterAmbassadorController } from '../controllers/twitter-ambassador.controller';
-import { authenticate } from '../middleware/auth';
+import { optionalAuth, authenticate } from '../middleware/auth';
 
 const router = Router();
-const twitterAmbassadorController = new TwitterAmbassadorController();
+const controller = new TwitterAmbassadorController();
 
-// All routes require authentication
-router.use(authenticate);
+// Twitter Ambassador APIs
+router.get('/challenge', optionalAuth, controller.getChallengeData.bind(controller));
+router.post('/submit-post', authenticate, controller.submitPost.bind(controller));
+router.post('/claim-earnings', authenticate, controller.claimEarnings.bind(controller));
+router.post('/request-review', authenticate, controller.requestReview.bind(controller));
 
-// Get Twitter ambassador challenge data
-router.get('/challenge', (req, res) => twitterAmbassadorController.getAmbassadorChallenge(req, res));
-
-// Submit Twitter post
-router.post('/submit-post', (req, res) => twitterAmbassadorController.submitPost(req, res));
-
-// Request milestone review
-router.post('/request-review', (req, res) => twitterAmbassadorController.requestMilestoneReview(req, res));
-
-// Claim approved earnings
-router.post('/claim-earnings', (req, res) => twitterAmbassadorController.claimApprovedEarnings(req, res));
-
+export { router as twitterAmbassadorRoutes };
 export default router;

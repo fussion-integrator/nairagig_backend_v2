@@ -1,0 +1,7 @@
+-- Insert default configurations for system challenges
+INSERT INTO system_challenge_configs (id, "challengeType", "milestoneTargets", "rewardAmounts", settings, "createdAt", "updatedAt") VALUES
+(gen_random_uuid(), 'LINKEDIN', '{"reactions": 50, "comments": 50}', '{"per_milestone": 5000}', '{"description": "Post about NairaGig on LinkedIn and earn ₦5,000 per 50 reactions/comments!"}', NOW(), NOW()),
+(gen_random_uuid(), 'FACEBOOK', '{"reactions": 50, "comments": 50}', '{"per_milestone": 5000}', '{"description": "Share NairaGig on Facebook and earn ₦5,000 per 50 reactions/comments!"}', NOW(), NOW()),
+(gen_random_uuid(), 'TWITTER', '{"retweets": 25, "likes": 50}', '{"per_milestone": 5000}', '{"description": "Tweet about NairaGig and earn ₦5,000 per 25 retweets or 50 likes!"}', NOW(), NOW()),
+(gen_random_uuid(), 'CONTENT_CREATOR', '{"views": 1000, "reactions": 100}', '{"per_milestone": 10000}', '{"description": "Create content about NairaGig and earn based on views and engagement!"}', NOW(), NOW()),
+(gen_random_uuid(), 'REFERRAL', '{"successful_referrals": 1}', '{"per_referral": 2000}', '{"description": "Refer friends to NairaGig and earn ₦2,000 per successful referral!"}', NOW(), NOW())
