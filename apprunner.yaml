@@ -6,7 +6,7 @@ build:
       - npm ci
       - npx prisma generate
     build:
-      - npm run build
+      - npm run build:production
     post-build:
       - npx prisma migrate deploy
 run:
