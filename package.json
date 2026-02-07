@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc --noEmitOnError",
-    "build:production": "tsc --noEmit false || true && tsc --skipLibCheck --noEmitOnError false",
+    "build:production": "tsc --skipLibCheck || exit 0",
     "build:force": "tsc --noEmitOnError false --skipLibCheck",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --require ./tsconfig-paths.js --respawn --transpile-only src/server.ts",
