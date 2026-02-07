@@ -9,6 +9,9 @@ build:
       - npm run build:production
     post-build:
       - npx prisma migrate deploy
+  env:
+    - name: DATABASE_URL
+      value: postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require
 run:
   command: npm start
   network:
