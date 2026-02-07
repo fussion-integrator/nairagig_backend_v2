@@ -19,3 +19,19 @@ run:
       value: production
     - name: PORT
       value: 3000
+    - name: DATABASE_URL
+      value: postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require
+    - name: REDIS_URL
+      value: redis://default:2P4KpO2hGXHyPTgDm8TVvwDSLIuKCuqk@redis-17689.c273.us-east-1-2.ec2.cloud.redislabs.com:17689
+    - name: JWT_SECRET
+      value: K2jDK3p74WgS5LW8a7QwPZBPBFhQ18Pbe+DotyKqhK8=
+    - name: JWT_REFRESH_SECRET
+      value: pwSPAGiMO4OCJEpIg5rvqud194WvvxUDLKbcLUlVAk8=
+    - name: SESSION_SECRET
+      value: C/UTVksEmsorX79i6IHLV+wYdLQetPHLrlkpu2wu/KM=
+    - name: ENCRYPTION_KEY
+      value: L3Pl1tnBip9xpsr8M1ZHB9EAr4zkhYa76iWk8mCW0Kw=
+    - name: FRONTEND_URL
+      value: https://main.d2yfwi0yjqwqxo.amplifyapp.com
+    - name: CORS_ORIGIN
+      value: https://main.d2yfwi0yjqwqxo.amplifyapp.com
