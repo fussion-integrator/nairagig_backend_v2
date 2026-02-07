@@ -3,15 +3,15 @@ runtime: nodejs22
 build:
   commands:
     pre-build:
+      - export DATABASE_URL="postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require"
       - npm ci
       - npx prisma generate
     build:
+      - export DATABASE_URL="postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require"
       - npm run build:production
     post-build:
+      - export DATABASE_URL="postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require"
       - npx prisma migrate deploy
-  env:
-    - name: DATABASE_URL
-      value: postgresql://nairagig_admin:LezPWCOXrOaqiuN6qtoa@nairagig.cdsce6oms614.us-east-1.rds.amazonaws.com:5432/postgres?schema=public&sslmode=require
 run:
   command: npm start
   network:
