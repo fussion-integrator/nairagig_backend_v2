@@ -12,24 +12,6 @@ import { config } from '@/config/config';
 import { logger } from '@/utils/logger';
 import { errorHandler } from '@/middleware/errorHandler';
 import { notFoundHandler } from '@/middleware/notFoundHandler';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-// Run migrations on startup
-async function runMigrations() {
-  try {
-    const { execSync } = require('child_process');
-    logger.info('Running database migrations...');
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
-    logger.info('✅ Database migrations completed');
-  } catch (error) {
-    logger.error('❌ Migration failed:', error);
-    process.exit(1);
-  }
-}
-
-runMigrations();
 
 // Enterprise Security Middleware
 import { EnterpriseSessionSecurity } from '@/middleware/sessionSecurity';
