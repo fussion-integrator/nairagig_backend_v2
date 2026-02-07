@@ -1,5 +1,5 @@
 version: 1.0
-runtime: nodejs20
+runtime: nodejs22
 build:
   commands:
     pre-build:
@@ -13,6 +13,7 @@ run:
   command: npm start
   network:
     port: 3000
+    env: PORT
   env:
     - name: NODE_ENV
       value: production
