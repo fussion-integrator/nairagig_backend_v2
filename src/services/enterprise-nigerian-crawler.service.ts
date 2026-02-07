@@ -255,26 +255,6 @@ export class EnterpriseNigerianJobCrawler {
       console.error('LinkedIn crawling error:', error);
       return [];
     }
-  }dela',
-        'SystemSpecs', 'Seamfix', 'Cowrywise', 'PiggyVest', 'Bamboo', 'Risevest'
-      ];
-
-      const jobs: CrawledJob[] = [];
-      
-      for (const company of nigerianCompanies.slice(0, 5)) {
-        try {
-          const companyJobs = await this.getCompanyJobs(company, filters);
-          jobs.push(...companyJobs);
-        } catch (error) {
-          console.error(`Error getting jobs for ${company}:`, error);
-        }
-      }
-
-      return jobs;
-    } catch (error) {
-      console.error('LinkedIn Nigeria crawling error:', error);
-      return [];
-    }
   }
 
   private async crawlAIDiscoveredCompanies(discoveredCompanies: CompanyData[], filters: any): Promise<CrawledJob[]> {

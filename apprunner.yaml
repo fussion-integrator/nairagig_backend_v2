@@ -1,18 +1,18 @@
 version: 1.0
-runtime: docker
+runtime: nodejs18
 build:
   commands:
+    pre-build:
+      - npm ci
+      - npx prisma generate
     build:
-      - echo Build started on `date`
-      - echo Building the Docker image...
-      - docker build -t nairagig-backend .
-      - echo Build completed on `date`
+      - npm run build
+    post-build:
+      - npx prisma migrate deploy
 run:
-  runtime-version: latest
-  command: node dist/server.js
+  command: npm start
   network:
     port: 3000
-    env: PORT
   env:
     - name: NODE_ENV
       value: production
