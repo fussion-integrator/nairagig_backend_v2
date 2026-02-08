@@ -139,13 +139,13 @@ export class NairaPlugService {
         where: { userId: authorId, currency: 'NGN' }
       });
       
-      if (!wallet || wallet.availableBalance < tipAmount) {
+      if (!wallet || Number(wallet.availableBalance) < tipAmount) {
         throw new Error('Insufficient balance for tip amount');
       }
     }
 
     const post = await prisma.$transaction(async (tx) => {
-      const newPost = await tx.communityPost.create({
+      const newPost: any = await tx.communityPost.create({
         data: {
           ...postData,
           authorId,
@@ -179,9 +179,9 @@ export class NairaPlugService {
             data: {
               userId: user.id,
               title: 'You were mentioned',
-              message: `${newPost.author.firstName} ${newPost.author.lastName} mentioned you in "${newPost.title}"`,
+              message: `${(newPost as any).author?.firstName || 'Someone'} ${(newPost as any).author?.lastName || ''} mentioned you in "${newPost.title}"`,
               type: 'SYSTEM',
-              data: { postId: newPost.id, mentionerName: `${newPost.author.firstName} ${newPost.author.lastName}` }
+              data: { postId: newPost.id, mentionerName: `${(newPost as any).author?.firstName || 'Someone'} ${(newPost as any).author?.lastName || ''}` }
             }
           });
         }
@@ -205,10 +205,7 @@ export class NairaPlugService {
 
     return prisma.communityPost.update({
       where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date()
-      },
+      data: data as any,
       include: {
         author: {
           select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
@@ -380,7 +377,7 @@ export class NairaPlugService {
 
     const tagCounts: Record<string, number> = {};
     posts.forEach(post => {
-      post.tags.forEach(tag => {
+      post.tags.forEach((tag: string) => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       });
     });

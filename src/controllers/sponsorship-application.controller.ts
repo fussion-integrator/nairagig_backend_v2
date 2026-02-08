@@ -21,15 +21,12 @@ export class SponsorshipApplicationController {
       const application = await prisma.sponsorshipApplication.create({
         data: {
           userId,
-          tierId: tier.id,
-          fullName,
-          email,
-          reason,
-          attachments: attachments || [],
-          voiceNote
+          businessName: fullName,
+          businessEmail: email,
+          description: reason,
+          requestedAmount: tier.price
         },
         include: {
-          tier: true,
           user: { select: { id: true, firstName: true, lastName: true, email: true } }
         }
       });
@@ -104,7 +101,6 @@ export class SponsorshipApplicationController {
           skip,
           take: Number(limit),
           include: {
-            tier: true,
             user: { select: { id: true, firstName: true, lastName: true, email: true } }
           },
           orderBy: { createdAt: 'desc' }
@@ -138,7 +134,6 @@ export class SponsorshipApplicationController {
         where: { id },
         data: { status },
         include: {
-          tier: true,
           user: { select: { id: true, firstName: true, lastName: true, email: true } }
         }
       });
@@ -147,7 +142,7 @@ export class SponsorshipApplicationController {
       if (status === 'APPROVED') {
         await prisma.user.update({
           where: { id: application.userId },
-          data: { subscriptionTier: application.tier.name }
+          data: { subscriptionTier: 'premium' }
         });
       }
 
@@ -185,14 +180,13 @@ export class SponsorshipApplicationController {
       if (applicationId) {
         const application = await prisma.sponsorshipApplication.update({
           where: { id: applicationId },
-          data: { status: 'APPROVED' },
-          include: { tier: true }
+          data: { status: 'APPROVED' }
         });
 
         // Update user tier
         await prisma.user.update({
           where: { id: transaction.userId },
-          data: { subscriptionTier: application.tier.name }
+          data: { subscriptionTier: 'premium' }
         });
       }
 

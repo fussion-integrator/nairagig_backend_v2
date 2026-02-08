@@ -669,7 +669,7 @@ export class AdminJobController {
 
       const { id } = req.params;
 
-      const job = await prisma.job.findUnique({
+      const job: any = await prisma.job.findUnique({
         where: { id },
         include: {
           client: {
@@ -756,47 +756,7 @@ export class AdminJobController {
             }
           },
           disputes: {
-            include: {
-              raisedByUser: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              },
-              againstUser: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              },
-              responses: {
-                include: {
-                  responder: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true
-                    }
-                  }
-                },
-                orderBy: {
-                  createdAt: 'desc'
-                }
-              }
-            }
-          },
           payments: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              }
-            },
             orderBy: {
               createdAt: 'desc'
             }

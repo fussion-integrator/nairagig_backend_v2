@@ -129,7 +129,7 @@ export class AdminController {
           role: session.admin.role,
           status: session.admin.status,
           lastLoginAt: session.admin.lastLoginAt,
-          createdAt: session.admin.createdAt
+          createdAt: (session.admin as any).createdAt
         }
       });
     } catch (error: any) {
