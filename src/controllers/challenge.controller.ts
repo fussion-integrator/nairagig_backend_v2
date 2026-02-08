@@ -66,6 +66,29 @@ export class ChallengeController {
     }
   }
 
+  async getActiveChallenges(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { limit = 6 } = req.query;
+
+      const challenges = await prisma.challenge.findMany({
+        where: { 
+          status: 'ACTIVE',
+          endDate: { gte: new Date() }
+        },
+        take: Number(limit),
+        include: {
+          creator: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
+          _count: { select: { participants: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      res.json({ success: true, data: challenges });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getChallenge(req: Request, res: Response, next: NextFunction) {
     try {
       const challengeId = req.params.id;

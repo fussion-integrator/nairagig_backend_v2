@@ -7,6 +7,7 @@ const challengeController = new ChallengeController();
 
 // Public routes
 router.get('/', optionalAuth, challengeController.getChallenges.bind(challengeController));
+router.get('/public/active', challengeController.getActiveChallenges.bind(challengeController));
 router.get('/:id', optionalAuth, challengeController.getChallenge.bind(challengeController));
 router.get('/:challengeId/leaderboard', challengeController.getLeaderboard.bind(challengeController));
 

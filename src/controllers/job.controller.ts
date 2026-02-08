@@ -54,6 +54,33 @@ export class JobController {
       next(error);
     }
   }
+
+  async getTrendingJobs(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { limit = 6 } = req.query;
+
+      const jobs = await prisma.job.findMany({
+        where: { 
+          status: 'OPEN',
+          visibility: 'PUBLIC'
+        },
+        take: Number(limit),
+        include: {
+          client: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
+          category: true,
+          _count: { select: { applications: true } }
+        },
+        orderBy: [
+          { viewCount: 'desc' },
+          { createdAt: 'desc' }
+        ]
+      });
+
+      res.json({ success: true, data: jobs });
+    } catch (error) {
+      next(error);
+    }
+  }
   async getJobs(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req.user as any)?.id;

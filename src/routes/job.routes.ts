@@ -7,6 +7,7 @@ const jobController = new JobController();
 
 // Public routes (no auth required)
 router.get('/public', jobController.getPublicJobs.bind(jobController));
+router.get('/public/trending', jobController.getTrendingJobs.bind(jobController));
 
 // Routes with optional authentication
 router.get('/', optionalAuth, jobController.getJobs.bind(jobController));
