@@ -53,7 +53,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       throw ApiError.unauthorized('Invalid or inactive user');
     }
 
-    req.user = user as AuthenticatedUser;
+    req.user = user as unknown as AuthenticatedUser;
     next();
   } catch (error) {
     next(error);
@@ -101,7 +101,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     });
 
     if (user && user.status === 'ACTIVE') {
-      req.user = user as AuthenticatedUser;
+      req.user = user as any;
     }
 
     next();

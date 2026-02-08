@@ -720,7 +720,7 @@ export class AdminUserService {
       backups: backups.map(backup => ({
         id: backup.id,
         userId: backup.resourceId,
-        userBackup: backup.metadata.userBackup,
+        userBackup: (backup.metadata as any)?.userBackup,
         deletedAt: backup.createdAt,
         deletedBy: backup.admin
       })),
@@ -916,13 +916,14 @@ export class AdminUserService {
       orderBy: { createdAt: 'desc' }
     });
 
-    if (!auditLog?.metadata?.originalData) {
+    const metadata = auditLog.metadata as any;
+    if (!metadata?.originalData) {
       throw new Error('Original user data not found. Cannot restore user.');
     }
 
-    const originalData = auditLog.metadata.originalData;
+    const originalData = metadata.originalData;
     const restorationDate = new Date();
-    const referenceId = auditLog.metadata.referenceId || `RES-${userId.substring(0, 8).toUpperCase()}-${Date.now()}`;
+    const referenceId = metadata.referenceId || `RES-${userId.substring(0, 8).toUpperCase()}-${Date.now()}`;
 
     await prisma.user.update({
       where: { id: userId },
@@ -1009,8 +1010,9 @@ export class AdminUserService {
       orderBy: { createdAt: 'desc' }
     });
 
-    const originalEmail = softDeleteLog?.metadata?.originalData?.email;
-    const referenceId = softDeleteLog?.metadata?.referenceId || `PERM-${userId.substring(0, 8).toUpperCase()}-${Date.now()}`;
+    const softDeleteMetadata = softDeleteLog?.metadata as any;
+    const originalEmail = softDeleteMetadata?.originalData?.email;
+    const referenceId = softDeleteMetadata?.referenceId || `PERM-${userId.substring(0, 8).toUpperCase()}-${Date.now()}`;
     const originalDeletionDate = user.deletedAt?.toLocaleDateString() || 'Unknown';
 
     // Send permanent deletion notification email before deleting

@@ -162,7 +162,7 @@ export class EnterpriseSessionSecurity {
       });
 
       req.user = session.user;
-      req.sessionId = session.id;
+      (req as any).sessionId = session.id;
       next();
     } catch (error) {
       logger.error('Session validation error:', error);

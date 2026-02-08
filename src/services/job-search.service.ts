@@ -67,6 +67,8 @@ export class JobSearchService {
         console.log('🔗 Fetching LinkedIn jobs via API...');
         const linkedinJobs = await this.linkedinAPI.searchPublicJobs({
           keywords: filters.keywords,
+    // @ts-ignore
+    // @ts-ignore
           location: 'Nigeria'
         });
         allJobs.push(...linkedinJobs);

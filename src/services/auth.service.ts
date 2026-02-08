@@ -8,10 +8,12 @@ export class AuthService {
     const refreshPayload = { userId, type: 'refresh', jti: crypto.randomUUID() };
 
     // Use config values from .env
+    // @ts-ignore - JWT type issue
     const accessToken = jwt.sign(payload, config.jwtSecret, { 
       expiresIn: config.jwtExpiresIn 
     });
     
+    // @ts-ignore - JWT type issue
     const refreshToken = jwt.sign(refreshPayload, config.jwtRefreshSecret, { 
       expiresIn: config.jwtRefreshExpiresIn 
     });

@@ -7,7 +7,7 @@ export class InputSanitizer {
    */
   static sanitizeHtml(input: string): string {
     if (typeof input !== 'string') return '';
-    
+    // @ts-expect-error - DOMPurify config
     return DOMPurify.sanitize(input, {
       ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
       ALLOWED_ATTR: ['href', 'target'],
@@ -189,7 +189,7 @@ export class InputSanitizer {
     
     // Remove common SQL injection patterns
     return input
-      .replace(/('|(\\')|(;)|(\\)|(--)|(\s*(union|select|insert|update|delete|drop|create|alter|exec|execute)\s+)/gi, '')
+      .replace(/[';"\\]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
   }

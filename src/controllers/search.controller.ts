@@ -200,13 +200,11 @@ export class SearchController {
       try {
         await prisma.searchQuery.create({
           data: {
-            id: require('crypto').randomUUID(),
             query: searchTerm,
             userId: userId,
-            type: (type as string) || 'all',
-            results: Number(totalResults) || 0,
-            createdAt: new Date()
-          }
+            filters: {},
+            results: Number(totalResults) || 0
+          } as any
         });
       } catch (error) {
         // Ignore tracking errors

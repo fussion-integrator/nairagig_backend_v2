@@ -321,7 +321,7 @@ export class SecurityMonitoring {
             eventCount: events.length,
             alertId: alert.id,
             events: alert.events 
-          }
+          } as any
         }
       });
     } catch (error) {

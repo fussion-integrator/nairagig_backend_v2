@@ -679,7 +679,7 @@ export class AdminSystemChallengesService {
               avatar: true
             }
           },
-          referred: {
+          referee: {
             select: {
               id: true,
               firstName: true,
