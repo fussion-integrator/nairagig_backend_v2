@@ -5,10 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc --noEmitOnError",
-    "build:production": "tsc --skipLibCheck && tsc-alias",
+    "build:production": "tsc --skipLibCheck && tsc-alias -p tsconfig.json",
     "build:force": "tsc --noEmitOnError false --skipLibCheck && tsc-alias",
-    "start": "node dist/server.js",
-    "start:migrate": "npx prisma migrate deploy && node dist/server.js",
+    "start": "node -r ./tsconfig-paths-bootstrap.js dist/server.js",
+    "start:migrate": "npx prisma migrate deploy && node -r ./tsconfig-paths-bootstrap.js dist/server.js",
     "dev": "ts-node-dev --require ./tsconfig-paths.js --respawn --transpile-only src/server.ts",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -4,19 +4,20 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY tsconfig.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
-COPY . .
+COPY src ./src
 
 # Generate Prisma client
 RUN npx prisma generate
 
 # Build the application
-RUN npm run build
+RUN npm run build:production
 
 # Production stage
 FROM node:18-alpine AS production
@@ -34,6 +35,8 @@ RUN adduser -S nairagig -u 1001
 COPY --from=builder --chown=nairagig:nodejs /app/dist ./dist
 COPY --from=builder --chown=nairagig:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nairagig:nodejs /app/package*.json ./
+COPY --from=builder --chown=nairagig:nodejs /app/tsconfig.json ./
+COPY --from=builder --chown=nairagig:nodejs /app/tsconfig-paths-bootstrap.js ./
 COPY --from=builder --chown=nairagig:nodejs /app/prisma ./prisma
 
 # Create logs directory
@@ -50,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "-r", "./tsconfig-paths-bootstrap.js", "dist/server.js"]
