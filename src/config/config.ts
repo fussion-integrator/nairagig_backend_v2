@@ -64,8 +64,8 @@ export const config = {
 
   // Paystack
   paystack: {
-    secretKey: process.env.PAYSTACK_SECRET_KEY!,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY!
+    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || ''
   },
 
   // Firebase
@@ -86,9 +86,7 @@ export const config = {
 const requiredEnvVars = [
   'DATABASE_URL', 
   'JWT_SECRET', 
-  'JWT_REFRESH_SECRET',
-  'PAYSTACK_SECRET_KEY',
-  'PAYSTACK_PUBLIC_KEY'
+  'JWT_REFRESH_SECRET'
 ];
 
 for (const envVar of requiredEnvVars) {
