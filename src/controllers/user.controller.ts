@@ -673,13 +673,8 @@ export class UserController {
       const profileCompletion = this.calculateProfileCompletion(updatedUser, skills, portfolios);
       if (profileCompletion >= 80 && profileCompletion < 100) {
         await emailService.sendAccountActivation(
-    // @ts-ignore
-    // @ts-ignore
-          updatedUser.firstName,
           updatedUser.email!,
-          profileCompletion,
-          `${process.env.FRONTEND_URL}/profile/complete`,
-          Math.max(0, 30 - Math.floor((Date.now() - new Date(updatedUser.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+          updatedUser.firstName
         );
       }
 

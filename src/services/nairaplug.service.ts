@@ -372,15 +372,13 @@ export class NairaPlugService {
           gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         }
       },
-      select: { tags: true }
+      include: { tags: true }
     });
 
-    // @ts-ignore
-    // @ts-ignore
     const tagCounts: Record<string, number> = {};
     posts.forEach(post => {
-      post.tags.forEach((tag: string) => {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      post.tags.forEach(tagObj => {
+        tagCounts[tagObj.name] = (tagCounts[tagObj.name] || 0) + 1;
       });
     });
 

@@ -102,13 +102,8 @@ export class ScheduledJobsService {
 
       for (const user of inactiveUsers) {
         await emailService.sendAccountActivation(
-    // @ts-ignore
-    // @ts-ignore
-          user.firstName,
           user.email,
-          50, // Default completion percentage
-          `https://nairagig.com/profile/complete`,
-          30
+          user.firstName
         );
       }
 

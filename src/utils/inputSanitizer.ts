@@ -7,15 +7,11 @@ export class InputSanitizer {
    */
   static sanitizeHtml(input: string): string {
     if (typeof input !== 'string') return '';
-    // @ts-expect-error - DOMPurify config
-    return DOMPurify.sanitize(input, {
+    return String(DOMPurify.sanitize(input, {
       ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li'],
       ALLOWED_ATTR: ['href', 'target'],
-      ALLOW_DATA_ATTR: false,
-      FORBID_SCRIPT: true,
-      FORBID_TAGS: ['script', 'object', 'embed', 'form', 'input', 'iframe'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'style']
-    });
+      ALLOW_DATA_ATTR: false
+    } as any));
   }
 
   /**
