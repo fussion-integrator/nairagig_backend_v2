@@ -7,7 +7,7 @@
     "build": "tsc --noEmitOnError",
     "build:production": "tsc --skipLibCheck || exit 0",
     "build:force": "tsc --noEmitOnError false --skipLibCheck",
-    "start": "node dist/server.js",
+    "start": "npx prisma migrate deploy && node dist/server.js",
     "dev": "ts-node-dev --require ./tsconfig-paths.js --respawn --transpile-only src/server.ts",
     "test": "jest",
     "test:watch": "jest --watch",
