@@ -129,7 +129,7 @@ export class AuthController {
           );
 
           // Return pending 2FA response
-          const callbackUrl = `http://localhost:3001/auth/callback?success=false&requires2fa=true&email=${encodeURIComponent(user.email)}`;
+          const callbackUrl = `${config.frontendUrl}/auth/callback?success=false&requires2fa=true&email=${encodeURIComponent(user.email)}`;
           return res.redirect(callbackUrl);
         }
 
@@ -158,7 +158,7 @@ export class AuthController {
         refreshToken
       }));
 
-      const callbackUrl = `http://localhost:3001/auth/callback?success=true&user=${userData}&tokens=${tokens}`;
+      const callbackUrl = `${config.frontendUrl}/auth/callback?success=true&user=${userData}&tokens=${tokens}`;
       res.redirect(callbackUrl);
     } catch (error) {
       next(error);
@@ -523,7 +523,7 @@ export class AuthController {
       refreshToken: sessionToken
     }));
 
-    const adminCallbackUrl = `http://localhost:3001/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
+    const adminCallbackUrl = `${config.frontendUrl}/auth/callback?success=true&admin=${adminData}&tokens=${tokens}`;
     return res.redirect(adminCallbackUrl);
   }
 

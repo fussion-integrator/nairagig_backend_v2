@@ -11,7 +11,7 @@ export class AdminController {
     try {
       const user = req.user as any;
       if (!user) {
-        return res.redirect('http://localhost:3001/login?error=oauth_failed');
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=oauth_failed`);
       }
 
       console.log('OAuth user data:', user);
@@ -43,7 +43,7 @@ export class AdminController {
 
       if (!admin || admin.status !== 'ACTIVE') {
         console.log('Admin not found or inactive:', { admin: admin?.email, status: admin?.status });
-        return res.redirect('http://localhost:3001/login?error=unauthorized');
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=unauthorized`);
       }
 
       // Create admin session
@@ -84,11 +84,11 @@ export class AdminController {
         role: admin.role
       }));
       
-      const redirectUrl = `http://localhost:3001/auth/callback?accessToken=${token}&refreshToken=${token}&admin=${adminData}`;
+      const redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/callback?accessToken=${token}&refreshToken=${token}&admin=${adminData}`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error('Admin OAuth callback error:', error);
-      res.redirect('http://localhost:3001/login?error=oauth_failed');
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=oauth_failed`);
     }
   }
 
