@@ -76,8 +76,15 @@ export class ChallengeController {
           endDate: { gte: new Date() }
         },
         take: Number(limit),
-        include: {
-          creator: { select: { id: true, firstName: true, lastName: true, profileImageUrl: true } },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          status: true,
+          totalPrizePool: true,
+          difficultyLevel: true,
+          endDate: true,
+          createdAt: true,
           _count: { select: { participants: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -85,7 +92,11 @@ export class ChallengeController {
 
       res.json({ success: true, data: challenges });
     } catch (error) {
-      next(error);
+      logger.error('Failed to fetch active challenges:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Internal server error' 
+      });
     }
   }
 

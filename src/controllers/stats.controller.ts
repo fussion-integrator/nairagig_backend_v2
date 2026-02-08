@@ -16,7 +16,7 @@ export class StatsController {
         prisma.job.count(),
         prisma.challenge.count(),
         prisma.job.count({ where: { status: 'COMPLETED' } }),
-        prisma.application.count()
+        prisma.jobApplication.count()
       ]);
 
       // Calculate success rate
