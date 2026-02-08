@@ -1,5 +1,38 @@
-import { CreatePostDto, UpdatePostDto, CreateResponseDto, SearchPostsDto } from '../dto/nairaplug.dto';
 import { prisma } from '@/config/database';
+
+// DTO types (inline since dto file is missing)
+interface SearchPostsDto {
+  query?: string;
+  category?: string;
+  location?: string;
+  tags?: string[];
+  sortBy?: 'recent' | 'popular' | 'responses';
+  page?: number;
+  limit?: number;
+}
+
+interface CreatePostDto {
+  title: string;
+  content: string;
+  category: string;
+  location?: string;
+  isUrgent?: boolean;
+  tipAmount?: number;
+  mentions?: string[];
+}
+
+interface UpdatePostDto {
+  title?: string;
+  content?: string;
+  category?: string;
+  location?: string;
+  isUrgent?: boolean;
+}
+
+interface CreatePostResponseDto {
+  content: string;
+  isAnonymous?: boolean;
+}
 
 export class NairaPlugService {
   static async getPosts(searchParams: SearchPostsDto, userId?: string) {
@@ -20,7 +53,7 @@ export class NairaPlugService {
     if (tags?.length) where.tags = { hasSome: tags };
 
     let orderBy: any = { createdAt: 'desc' };
-    if (sortBy === 'popular') orderBy = { likes: { _count: 'desc' } };
+    if (sortBy === 'popular') orderBy = { likesCount: 'desc' };
     if (sortBy === 'responses') orderBy = { responses: { _count: 'desc' } };
 
     const posts = await prisma.communityPost.findMany({
@@ -178,13 +211,13 @@ export class NairaPlugService {
       },
       include: {
         author: {
-          select: { id: true, firstName: true, lastName: true, profilePicture: true }
+          select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
         }
       }
     });
   }
 
-  static async createResponse(postId: string, data: CreateResponseDto, authorId?: string) {
+  static async createResponse(postId: string, data: CreatePostResponseDto, authorId?: string) {
     const post = await prisma.communityPost.findUnique({
       where: { id: postId },
       select: { id: true, title: true }
@@ -194,7 +227,7 @@ export class NairaPlugService {
       throw new Error('Post not found');
     }
 
-    return prisma.communityPostResponse.create({
+    return prisma.postResponse.create({
       data: {
         ...data,
         postId,
@@ -202,46 +235,52 @@ export class NairaPlugService {
       },
       include: {
         author: {
-          select: { id: true, firstName: true, lastName: true, profilePicture: true }
+          select: { id: true, firstName: true, lastName: true, profileImageUrl: true }
         }
       }
     });
   }
 
   static async toggleLike(type: 'post' | 'response', id: string, userId: string) {
-    const likeData = type === 'post' 
-      ? { postId: id, userId }
-      : { responseId: id, userId };
-
-    const existing = await prisma.communityLike.findFirst({
-      where: likeData
-    });
-
-    if (existing) {
-      await prisma.communityLike.delete({
-        where: { id: existing.id }
+    if (type === 'post') {
+      const existing = await prisma.postLike.findFirst({
+        where: { postId: id, userId }
       });
-      return { liked: false };
+
+      if (existing) {
+        await prisma.postLike.delete({ where: { id: existing.id } });
+        return { liked: false };
+      } else {
+        await prisma.postLike.create({ data: { postId: id, userId } });
+        return { liked: true };
+      }
     } else {
-      await prisma.communityLike.create({
-        data: likeData
+      const existing = await prisma.responseLike.findFirst({
+        where: { responseId: id, userId }
       });
-      return { liked: true };
+
+      if (existing) {
+        await prisma.responseLike.delete({ where: { id: existing.id } });
+        return { liked: false };
+      } else {
+        await prisma.responseLike.create({ data: { responseId: id, userId } });
+        return { liked: true };
+      }
     }
   }
 
   static async toggleBookmark(postId: string, userId: string) {
-    const existing = await prisma.communityBookmark.findFirst({
+    const existing = await prisma.postBookmark.findFirst({
       where: { postId, userId }
     });
 
     if (existing) {
-      await prisma.communityBookmark.delete({
+      await prisma.postBookmark.delete({
         where: { id: existing.id }
       });
       return { bookmarked: false };
     } else {
-      await prisma.communityBookmark.create({
+      await prisma.postBookmark.create({
         data: { postId, userId }
       });
       return { bookmarked: true };
@@ -249,7 +288,7 @@ export class NairaPlugService {
   }
 
   static async markResponseHelpful(responseId: string, userId: string) {
-    const response = await prisma.communityPostResponse.findUnique({
+    const response = await prisma.postResponse.findUnique({
       where: { id: responseId },
       include: { post: { select: { authorId: true } } }
     });
@@ -258,7 +297,7 @@ export class NairaPlugService {
       throw new Error('Response not found or unauthorized');
     }
 
-    return prisma.communityPostResponse.update({
+    return prisma.postResponse.update({
       where: { id: responseId },
       data: { isHelpful: true }
     });
@@ -400,7 +439,7 @@ export class NairaPlugService {
   static async getBookmarkedPosts(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
 
-    const bookmarks = await prisma.communityBookmark.findMany({
+    const bookmarks = await prisma.postBookmark.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       skip,
