@@ -150,7 +150,7 @@ export class AdminSponsorshipController {
   async reviewRequest(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const adminId = req.admin?.id;
+      const adminId = (req as any).admin?.id;
 
       if (!adminId) {
         return res.status(401).json({ error: 'Admin authentication required' });

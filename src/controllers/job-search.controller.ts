@@ -131,7 +131,7 @@ export class JobSearchController {
           company,
           applicationUrl,
           source,
-          status: 'applied',
+          status: 'APPLIED',
           appliedAt: new Date()
         }
       });

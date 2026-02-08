@@ -37,7 +37,7 @@ export const subscriptionController = {
       
       const walletBalance = wallet?.availableBalance || 0
       const planAmount = Number(plan.price)
-      const hasWalletFunds = walletBalance >= planAmount
+      const hasWalletFunds = Number(walletBalance) >= planAmount
       
       res.json({
         success: true,
@@ -170,7 +170,7 @@ export const subscriptionController = {
       
       const walletBalance = wallet?.availableBalance || 0
       const planAmount = Number(plan.price)
-      const hasWalletFunds = walletBalance >= planAmount
+      const hasWalletFunds = Number(walletBalance) >= planAmount
       
       // If no payment method specified and user has sufficient wallet funds, return payment options
       if (!paymentMethod && hasWalletFunds) {

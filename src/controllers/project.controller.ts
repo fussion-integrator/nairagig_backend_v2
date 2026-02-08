@@ -22,7 +22,7 @@ export class ProjectController {
           'cancelled': 'CANCELLED',
           'disputed': 'DISPUTED'
         };
-        where.status = statusMap[status.toLowerCase()] || status.toUpperCase();
+        where.status = statusMap[String(status).toLowerCase()] || String(status).toUpperCase();
       }
       if (category) where.category = category;
       if (minBudget || maxBudget) {

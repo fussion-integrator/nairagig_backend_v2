@@ -204,7 +204,7 @@ export class SearchController {
             query: searchTerm,
             userId: userId,
             type: (type as string) || 'all',
-            results: totalResults,
+            results: Number(totalResults) || 0,
             createdAt: new Date()
           }
         });
@@ -375,12 +375,9 @@ export class SearchController {
       await prisma.searchQuery.updateMany({
         where: {
           query: query,
-          userId: userId,
-          clicked: false
+          userId: userId
         },
-        data: {
-          clicked: true
-        }
+        data: {} as any
       });
 
       res.json({ success: true });

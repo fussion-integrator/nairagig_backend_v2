@@ -756,6 +756,10 @@ export class AdminJobController {
             }
           },
           disputes: {
+            orderBy: {
+              createdAt: 'desc'
+            }
+          },
           payments: {
             orderBy: {
               createdAt: 'desc'

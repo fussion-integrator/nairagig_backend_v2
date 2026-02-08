@@ -372,7 +372,7 @@ export class ReferralController {
         await emailService.sendReferralRewardClaimed(user.email, {
           userName: `${user.firstName} ${user.lastName}`,
           userEmail: user.email,
-          claimedAmount,
+          claimedAmount: claimableAmount,
           referralCount: completedReferrals,
           multiplier,
           rewardPerReferral: 200 * multiplier,
@@ -388,7 +388,7 @@ export class ReferralController {
       res.json({
         success: true,
         data: {
-          claimedAmount,
+          claimedAmount: claimableAmount,
           newBalance: (Number(wallet.availableBalance) + claimableAmount),
           multiplier,
           referralCount: completedReferrals

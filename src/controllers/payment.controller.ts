@@ -43,7 +43,7 @@ export class PaymentController {
       
       const walletBalance = wallet?.availableBalance || 0;
       const paymentAmount = Number(amount);
-      const hasWalletFunds = walletBalance >= paymentAmount;
+      const hasWalletFunds = Number(walletBalance) >= paymentAmount;
       
       // For project payments, check if user has sufficient wallet funds
       if (type === 'PROJECT_PAYMENT' && !paymentMethod && hasWalletFunds) {
@@ -487,7 +487,7 @@ export class PaymentController {
       
       const walletBalance = wallet?.availableBalance || 0;
       const requiredAmount = amount ? Number(amount) : 0;
-      const hasWalletFunds = walletBalance >= requiredAmount;
+      const hasWalletFunds = Number(walletBalance) >= requiredAmount;
       
       res.json({
         success: true,

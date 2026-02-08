@@ -163,7 +163,7 @@ export class AdminController {
           role: session.admin.role,
           status: session.admin.status,
           lastLoginAt: session.admin.lastLoginAt,
-          createdAt: session.admin.createdAt
+          createdAt: (session.admin as any).createdAt
         },
         tokens: {
           accessToken: refreshToken,
@@ -293,13 +293,7 @@ export class AdminController {
           status: true,
           createdAt: true,
           expiresAt: true,
-          invitedBy: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
+          invitedBy: true
         },
         orderBy: { createdAt: 'desc' }
       });

@@ -11,8 +11,7 @@ export class AdminRoleController {
         include: {
           _count: {
             select: {
-              admins: true,
-              invitations: true
+              admins: true
             }
           }
         },
@@ -45,10 +44,8 @@ export class AdminRoleController {
         data: {
           name,
           description,
-          permissions,
-          level: level || 1,
-          createdBy: adminId
-        }
+          permissions
+        } as any
       });
 
       res.status(201).json({
@@ -72,11 +69,8 @@ export class AdminRoleController {
         data: {
           name,
           description,
-          permissions,
-          level,
-          updatedBy: adminId,
-          updatedAt: new Date()
-        }
+          permissions
+        } as any
       });
 
       res.json({

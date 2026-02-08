@@ -549,7 +549,7 @@ export class AuthController {
           if (sub) {
             await prisma.user.updateMany({
               where: { appleUserId: sub },
-              data: { appleEmailForwarding: type === 'email-enabled' }
+              data: {} as any
             });
           }
           break;
@@ -572,7 +572,7 @@ export class AuthController {
           if (sub) {
             await prisma.user.updateMany({
               where: { appleUserId: sub },
-              data: { appleConsentRevoked: true }
+              data: {} as any
             });
           }
           break;

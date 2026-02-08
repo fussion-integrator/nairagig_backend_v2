@@ -842,7 +842,7 @@ export class JobController {
       const hasWalletFunds = walletBalance >= jobBudget;
       
       // If no payment method specified and user has sufficient wallet funds, return payment options
-      if (!paymentMethod && hasWalletFunds && jobBudget > 0) {
+      if (!paymentMethod && hasWalletFunds && Number(jobBudget) > 0) {
         return res.json({
           success: true,
           requiresPaymentMethod: true,
@@ -965,7 +965,7 @@ export class JobController {
             project,
             paymentMethod: 'wallet',
             amountPaid: jobBudget,
-            newWalletBalance: Number(walletBalance) - jobBudget
+            newWalletBalance: Number(walletBalance) - Number(jobBudget)
           } 
         });
       }
@@ -1262,7 +1262,7 @@ export class JobController {
           jobBudget,
           walletBalance: Number(walletBalance),
           hasWalletFunds,
-          shortfall: hasWalletFunds ? 0 : jobBudget - Number(walletBalance),
+          shortfall: hasWalletFunds ? 0 : Number(jobBudget) - Number(walletBalance),
           paymentOptions: [
             {
               method: 'wallet',
