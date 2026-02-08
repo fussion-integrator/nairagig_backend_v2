@@ -170,8 +170,8 @@ export class JobController {
   }
 
   async createJob(req: Request, res: Response, next: NextFunction) {
+    const userId = (req.user as any)?.id;
     try {
-      const userId = (req.user as any)?.id;
       if (!userId) throw ApiError.unauthorized('User not authenticated');
 
       logger.info('Creating job with data:', {

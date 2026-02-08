@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AdminSponsorshipController } from '../controllers/admin-sponsorship.controller';
-import { authenticateAdmin } from '../middleware/admin-auth.middleware';
+import { authenticateAdmin } from '../middleware/adminAuth';
 
 const router = Router();
 const adminSponsorshipController = new AdminSponsorshipController();
