@@ -136,9 +136,11 @@ model User {
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
   appleId                   String?                   @unique
+  appleUserId               String?                   @unique
   authProvider              AuthProvider              @default(LOCAL)
   googleId                  String?                   @unique
   linkedinId                String?                   @unique
+  avatar                    String?
   address                   String?
   availabilityStatus        String?                   @default("available")
   city                      String?
@@ -267,6 +269,8 @@ model User {
   postMentions              PostMention[]         @relation("PostMentions")
   documents                 Document[]
   systemChallengeAudits     SystemChallengeAudit[] @relation("UserSystemChallengeAudits")
+  searchQueries             SearchQuery[]
+  sponsorshipApplications   SponsorshipApplication[]
 
   @@map("users")
 }
@@ -1068,6 +1072,7 @@ model Challenge {
   submissionEnd      DateTime
   submissionFormat   String?
   submissionStart    DateTime
+  endDate            DateTime?
   tags               String[]
   totalPrizePool     Decimal
   viewCount          Int                    @default(0)
@@ -2167,6 +2172,7 @@ model LinkedInPost {
   reactions   Int               @default(0)
   comments    Int               @default(0)
   status      LinkedInPostStatus @default(PENDING)
+  submittedAt DateTime          @default(now())
   lastChecked DateTime?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -2199,6 +2205,7 @@ model FacebookPost {
   reactions   Int               @default(0)
   comments    Int               @default(0)
   status      FacebookPostStatus @default(PENDING)
+  submittedAt DateTime          @default(now())
   lastChecked DateTime?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -2230,7 +2237,10 @@ model TwitterPost {
   url         String
   reactions   Int               @default(0)
   comments    Int               @default(0)
+  likes       Int               @default(0)
+  replies     Int               @default(0)
   status      TwitterPostStatus @default(PENDING)
+  submittedAt DateTime          @default(now())
   lastChecked DateTime?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -2310,6 +2320,8 @@ enum TwitterPostStatus {
 enum TwitterMilestoneType {
   REACTIONS
   COMMENTS
+  LIKES
+  REPLIES
 }
 
 enum TwitterMilestoneStatus {
@@ -2593,6 +2605,8 @@ model CommunityPost {
   tipAmount  Int?
   authorId   String
   views      Int         @default(0)
+  likesCount Int         @default(0)
+  submittedAt DateTime?  @default(now())
   tipReleased Boolean    @default(false)
   tipReleasedAt DateTime?
   tipReleasedToId String?
@@ -2756,4 +2770,34 @@ enum DocumentStatus {
   APPROVED
   REJECTED
   EXPIRED
+}
+
+model SearchQuery {
+  id        String   @id @default(uuid())
+  userId    String
+  query     String
+  filters   Json     @default("{}")
+  results   Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("search_queries")
+}
+
+model SponsorshipApplication {
+  id              String                        @id @default(uuid())
+  userId          String
+  sponsorshipId   String?
+  businessName    String
+  businessEmail   String
+  description     String?
+  requestedAmount Decimal                       @default(0)
+  status          SponsorshipApplicationStatus  @default(PENDING)
+  submittedAt     DateTime                      @default(now())
+  reviewedAt      DateTime?
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  user            User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sponsorship_applications")
 }

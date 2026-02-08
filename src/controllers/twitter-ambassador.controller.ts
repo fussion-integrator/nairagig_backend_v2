@@ -66,8 +66,8 @@ export class TwitterAmbassadorController {
           totalPosts: userPosts.length,
           totalReactions: userPosts.reduce((sum, post) => sum + (post.likes || 0), 0),
           totalComments: userPosts.reduce((sum, post) => sum + (post.replies || 0), 0),
-          totalEarnings: userMilestones.filter(m => m.status === 'APPROVED').reduce((sum, m) => sum + m.amount, 0),
-          pendingEarnings: userMilestones.filter(m => m.status === 'PENDING').reduce((sum, m) => sum + m.amount, 0),
+          totalEarnings: userMilestones.filter(m => m.status === 'APPROVED').reduce((sum, m) => sum + Number(m.amount), 0),
+          pendingEarnings: userMilestones.filter(m => m.status === 'PENDING').reduce((sum, m) => sum + Number(m.amount), 0),
           reactionMilestones: userMilestones.filter(m => m.type === 'LIKES').length,
           commentMilestones: userMilestones.filter(m => m.type === 'REPLIES').length
         };
@@ -154,7 +154,7 @@ export class TwitterAmbassadorController {
         throw ApiError.badRequest('No earnings available to claim');
       }
 
-      const totalAmount = approvedMilestones.reduce((sum, m) => sum + m.amount, 0);
+      const totalAmount = approvedMilestones.reduce((sum, m) => sum + Number(m.amount), 0);
 
       // Mark milestones as claimed
       await prisma.twitterMilestone.updateMany({
