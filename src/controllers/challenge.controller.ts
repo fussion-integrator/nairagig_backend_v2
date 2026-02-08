@@ -72,8 +72,7 @@ export class ChallengeController {
 
       const challenges = await prisma.challenge.findMany({
         where: { 
-          status: 'ACTIVE',
-          endDate: { gte: new Date() }
+          status: 'ACTIVE'
         },
         take: Number(limit),
         select: {
