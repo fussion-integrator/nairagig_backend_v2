@@ -534,4 +534,54 @@ export class AuthController {
     if (ipAddress.startsWith('102.89')) return 'Abuja, Nigeria';
     return 'Nigeria';
   }
+
+  async appleNotifications(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { type, sub, email, events } = req.body;
+      
+      logger.info('Apple notification received:', { type, sub, email });
+
+      // Handle different notification types
+      switch (type) {
+        case 'email-disabled':
+        case 'email-enabled':
+          // Update user's email forwarding preference
+          if (sub) {
+            await prisma.user.updateMany({
+              where: { appleUserId: sub },
+              data: { appleEmailForwarding: type === 'email-enabled' }
+            });
+          }
+          break;
+
+        case 'account-delete':
+          // Mark user account for deletion
+          if (sub) {
+            await prisma.user.updateMany({
+              where: { appleUserId: sub },
+              data: { 
+                status: 'SUSPENDED',
+                deletedAt: new Date()
+              }
+            });
+          }
+          break;
+
+        case 'consent-revoked':
+          // Handle consent revocation
+          if (sub) {
+            await prisma.user.updateMany({
+              where: { appleUserId: sub },
+              data: { appleConsentRevoked: true }
+            });
+          }
+          break;
+      }
+
+      res.status(200).send();
+    } catch (error) {
+      logger.error('Apple notification error:', error);
+      res.status(500).send();
+    }
+  }
 }

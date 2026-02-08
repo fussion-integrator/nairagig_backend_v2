@@ -25,6 +25,7 @@ router.get('/linkedin/callback', passport.authenticate('linkedin', { failureRedi
 
 router.get('/apple', passport.authenticate('apple'));
 router.get('/apple/callback', passport.authenticate('apple', { failureRedirect: '/login' }), authController.oauthCallback.bind(authController));
+router.post('/apple/notifications', authController.appleNotifications.bind(authController));
 
 // Token management endpoints
 router.post('/set-tokens', authController.setTokens.bind(authController));
